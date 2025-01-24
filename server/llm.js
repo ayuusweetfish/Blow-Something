@@ -98,7 +98,7 @@ const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
 // Application-specific routines
 
 const _askForRecognition = async (image) => {
-  const [_, text] = await requestLLM_GLM4vFlash([
+  const [_, text] = await requestLLM_GLM4vPlus([
     { role: 'user', content: [
       {
         type: 'image_url',
@@ -111,11 +111,11 @@ const _askForRecognition = async (image) => {
       },
     ] },
   ])
-  console.log(text)
+  return text
 }
 export const askForRecognition = retry(_askForRecognition, 3, 'Cannot ask for recognition')
 
 // ======== Test run ======== //
 if (import.meta.main) {
-  console.log(await askForRecognition(await Deno.readFile('elephant-1.png')))
+  console.log(await askForRecognition(await Deno.readFile('peach-1.png')))
 }
