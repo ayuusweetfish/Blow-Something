@@ -15,6 +15,7 @@ local bubbles = function (p)
     local shape = love.physics.newCircleShape(1e-4 * scale)
     local fixt = love.physics.newFixture(body, shape)
 
+    body:setMass(1)
     body:setLinearDamping(0.5)  -- Damp
     body:setAngularDamping(1.0) -- Damp a lot
     fixt:setRestitution(0.9)    -- Bounce a lot
@@ -83,7 +84,7 @@ local bubbles = function (p)
             local d = math.sqrt(dsq)
             local t = 1 - d / imp_r
             local imp_intensity = 1 - t * t
-            local imp_scale = 3e-6 * scale * imp_intensity / d
+            local imp_scale = 2.0 * scale * imp_intensity / d
             b:applyForce(dx * imp_scale, dy * imp_scale)
           end
           return true
