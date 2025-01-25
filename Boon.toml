@@ -52,10 +52,6 @@ ignore_list = [
     "^.git.*",
 
     # Releases
-    ".zip$",
-    ".tar.gz$",
-    ".love$",
-    ".exe$",
     "^server/",
     "^release/",
 
@@ -67,6 +63,7 @@ ignore_list = [
     "^run.bat",
     "^img_raw/",
     "^misc/",
+    "^backups/",
 ]
 
 # If this is set to true, then the default ignore list will not be
