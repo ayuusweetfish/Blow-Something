@@ -1,10 +1,11 @@
+import { logNetwork } from './db.js'
 import { encodeBase64 } from 'jsr:@std/encoding/base64'
 
 const loggedFetchJSON = async (url, options) => {
   const t0 = Date.now()
   const req = await fetch(url, options)
   const respText = await req.text()
-  // await logNetwork(url, options.body, respText, Date.now() - t0)
+  await logNetwork(url, options.body, respText, Date.now() - t0)
   console.log(url, respText)
   return JSON.parse(respText)
 }
