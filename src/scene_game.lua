@@ -34,11 +34,17 @@ local bubbles = function (p)
     for i = 1, n do
       local x = math.cos(i / n * math.pi * 2) * expected_r
       local y = math.sin(i / n * math.pi * 2) * expected_r
-      b[i]:setPosition(x * scale, y * scale)
+      x = x + (love.math.noise(x*0.6 - 15, y*0.6) - 0.5) * 4e-2
+      y = y + (love.math.noise(x*0.6, y*0.6 + 10) - 0.5) * 4e-2
+      b[i]:setPosition(x * scale * 0.94, y * scale * 0.94)
     end
 
     for i = 1, #joints_inflating do
-      joints_inflating[i].joint:setLength(expected_r * joints_inflating[i].rate)
+      local j = joints_inflating[i]
+      j.joint:setLength(expected_r * j.rate)
+      if j.freq_rate then
+        j.joint:setFrequency(j.freq_rate / expected_r^3)
+      end
     end
   end
 
@@ -51,10 +57,10 @@ local bubbles = function (p)
       local x2, y2 = b2:getPosition()
       local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
       joint:setDampingRatio(10) -- Oscillate less
-      joint:setFrequency(j == 3 and 3 or 4)
       joints_inflating[#joints_inflating + 1] = {
         joint = joint,
         rate = 2 * math.sin(math.pi / n * j) * scale,
+        freq_rate = (j == 3 and 3 or 4) * 0.1
       }
     end
 
@@ -64,6 +70,7 @@ local bubbles = function (p)
     joints_inflating[#joints_inflating + 1] = {
       joint = joint,
       rate = 1 * scale,
+      freq_rate = 0.05 * 0.1,
     }
   end
   set_size(0.1)
@@ -80,7 +87,7 @@ local bubbles = function (p)
     return b[i]
   end
 
-  local imp_r = 0.075
+  local imp_r = 0.1
 
   local px, py = nil, nil
   local set_ptr = function (x, y) px, py = x * scale, y * scale end
@@ -247,8 +254,8 @@ return function ()
   s.update = function ()
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
-      local t = sinceState - inflateStart
-      bubbles.set_size(math.max(0.2, t / 480))
+      local t = (sinceState - inflateStart) / 240
+      bubbles.set_size(0.1 + 0.8 * (1 - math.exp(-t))^2)
     end
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
