@@ -31,6 +31,12 @@ local bubbles = function (p)
 
   local joints_inflating = {}
   local set_size = function (expected_r)
+    for i = 1, n do
+      local x = math.cos(i / n * math.pi * 2) * expected_r
+      local y = math.sin(i / n * math.pi * 2) * expected_r
+      b[i]:setPosition(x * scale, y * scale)
+    end
+
     for i = 1, #joints_inflating do
       joints_inflating[i].joint:setLength(expected_r * joints_inflating[i].rate)
     end
@@ -46,17 +52,15 @@ local bubbles = function (p)
       local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
       joint:setDampingRatio(10) -- Oscillate less
       joint:setFrequency(j == 3 and 3 or 4)
-      -- joint:setLength(expected_r * 2 * math.sin(math.pi / n * j) * scale)
       joints_inflating[#joints_inflating + 1] = {
         joint = joint,
-        rate = math.sin(math.pi / n * j) * scale,
+        rate = 2 * math.sin(math.pi / n * j) * scale,
       }
     end
 
     local joint = love.physics.newDistanceJoint(b1, body_cen, x1, y1, 0, 0)
     joint:setDampingRatio(0)
     joint:setFrequency(0.05)
-    -- joint:setLength(expected_r * scale)
     joints_inflating[#joints_inflating + 1] = {
       joint = joint,
       rate = 1 * scale,
@@ -277,8 +281,8 @@ return function ()
       local pts = {}
       for i = 0, n + 2 do
         local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
-        local x0 = Wc / 2 + x * (Wc / 2)
-        local y0 = Hc / 2 + y * (Hc / 2)
+        local x0 = Wc / 2 + x * dispScale
+        local y0 = Hc / 2 + y * dispScale
         pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
       end
       local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
@@ -313,7 +317,9 @@ return function ()
 
     love.graphics.setColor(1, 1, 1)
     draw.img('cat', 10, 198)
-    draw.img('stick_small', 128, 217)
+    if state == STATE_INITIAL then
+      draw.img('stick_small', 128, 217)
+    end
     draw.img('bottle', 128, 217)
     draw.img('palette', 43, 266)
     draw.img('camera', 143, 263)
