@@ -114,15 +114,28 @@ local bubbles = function (p)
   local imp_r = 0.1
 
   local px, py = nil, nil
-  local set_ptr = function (x, y) px, py = x * scale, y * scale end
-  local rel_ptr = function () px, py = nil, nil end
+  local p_start_inside = false
+  local p_effective = false
+  local set_ptr = function (x, y)
+    if px == nil then
+      p_start_inside = check_inside(x, y)
+      p_effective = true
+    else
+      p_effective = (check_inside(x, y) == p_start_inside)
+    end
+    px, py = x * scale, y * scale
+  end
+  local rel_ptr = function ()
+    px, py = nil, nil
+    p_effective = false
+  end
   local get_ptr = function ()
     if px then return px / scale, py / scale, imp_r end
     return nil
   end
 
   local update = function (dt)
-    if px ~= nil then
+    if p_effective then
       world:queryBoundingBox(
         px - imp_r * scale, py - imp_r * scale,
         px + imp_r * scale, py + imp_r * scale,
@@ -391,12 +404,14 @@ return function ()
   end
 
   s.press = function (x, y)
+    -- Check the buttons first, in case the player changes colour before inflation
+    for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
+
     if state == STATE_INFLATE then
       inflateStart = sinceState
       return true
     end
 
-    for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
     local x1 = (x - Xc) / dispScale
     local y1 = (y - Yc) / dispScale
 
