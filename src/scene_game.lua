@@ -275,8 +275,8 @@ return function ()
   end
 
   local Wc, Hc = 160, 180
-  local WcEx = 10
-  local tex = love.image.newImageData(Wc + WcEx * 2, Hc, 'rgba8')
+  local WcEx, HcEx = 10, 10
+  local tex = love.image.newImageData(Wc + WcEx * 2, Hc + HcEx * 2, 'rgba8')
   local img = love.graphics.newImage(tex)
 
   s.draw = function ()
@@ -302,15 +302,15 @@ return function ()
       tex:mapPixel(function () return 0, 0, 0, 0 end)
       -- Blit polygon onto texture
       -- http://alienryderflex.com/polygon_fill/
-      for y = 0, Hc - 1 do
+      for y = 0, Hc + HcEx * 2 - 1 do
         local xs = {}
         local x1, y1 = bubbles.get_pos(n)
         x1 = Wc / 2 + x1 * dispScale + WcEx
-        y1 = Hc / 2 + y1 * dispScale
+        y1 = Hc / 2 + y1 * dispScale + HcEx
         for i = 1, n do
           local x0, y0 = bubbles.get_pos(i)
           x0 = Wc / 2 + x0 * dispScale + WcEx
-          y0 = Hc / 2 + y0 * dispScale
+          y0 = Hc / 2 + y0 * dispScale + HcEx
           if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
             xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
           end
@@ -331,7 +331,7 @@ return function ()
       for i = 0, n + 2 do
         local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
         local x0 = Wc / 2 + x * dispScale + WcEx
-        local y0 = Hc / 2 + y * dispScale
+        local y0 = Hc / 2 + y * dispScale + HcEx
         pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
       end
       local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
@@ -339,7 +339,7 @@ return function ()
         local t = i / 1000
         local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
         -- Distance is less than 1
-        if x0 >= 0 and x0 < Wc + WcEx * 2 and y0 >= 0 and y0 < Hc then
+        if x0 >= 0 and x0 < Wc + WcEx * 2 and y0 >= 0 and y0 < Hc + HcEx then
           tex:setPixel(math.floor(x0), math.floor(y0), paintR, paintG, paintB, 1)
         end
         x1, y1, index = x0, y0, index_new
@@ -350,7 +350,7 @@ return function ()
       love.graphics.setColor(1, 1, 1)
       love.graphics.draw(img,
         math.floor(Xc - Wc / 2 - WcEx),
-        math.floor(Yc - Hc / 2),
+        math.floor(Yc - Hc / 2 - HcEx),
         0, dispScale * 2 / Wc)
       love.graphics.setBlendMode('alpha')
 
