@@ -1,7 +1,6 @@
 local draw = require 'draw_utils'
 
 love.physics.setMeter(1)
-love.graphics.setDefaultFilter('nearest', 'nearest')
 
 local bubbles = function (p)
   local n = #p
@@ -62,7 +61,7 @@ local bubbles = function (p)
     return b[i]
   end
 
-  local imp_r = 0.05
+  local imp_r = 0.075
 
   local px, py = nil, nil
   local set_ptr = function (x, y) px, py = x * scale, y * scale end
@@ -86,7 +85,7 @@ local bubbles = function (p)
             local d = math.sqrt(dsq)
             local t = 1 - d / imp_r
             local imp_intensity = 1 - t * t
-            local imp_scale = 2.0 * scale * imp_intensity / d
+            local imp_scale = 2.5 * scale * imp_intensity / d
             b:applyForce(dx * imp_scale, dy * imp_scale)
           end
           return true
@@ -146,7 +145,7 @@ return function ()
   local s = {}
   local W, H = W, H
 
-  local dispScale = 448
+  local dispScale = 80
 
   local n = 100
   local p = {}
@@ -181,7 +180,7 @@ return function ()
     bubbles.update(1 / 240)
   end
 
-  local Wc, Hc = 224, 224
+  local Wc, Hc = 160, 160
   local tex = love.image.newImageData(Wc, Hc, 'rgba8')
   local img = love.graphics.newImage(tex)
 
@@ -193,7 +192,7 @@ return function ()
     love.graphics.clear(1, 1, 1)
 
     -- Clear texture
-    tex:mapPixel(function () return 0, 0, 0, 0 end)
+    tex:mapPixel(function () return 1, 0.96, 0.92, 1 end)
     local pts = {}
     for i = 0, n + 2 do
       local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
@@ -242,6 +241,14 @@ return function ()
         H / 2 + py * dispScale,
         pr * dispScale)
     end
+
+    love.graphics.setColor(1, 1, 1)
+    draw.img('cat', 10, 198)
+    draw.img('stick_small', 128, 217)
+    draw.img('bottle', 128, 217)
+    draw.img('palette', 43, 266)
+    draw.img('camera', 143, 263)
+    -- draw.img('stick_large', 98, 155)
   end
 
   s.destroy = function ()

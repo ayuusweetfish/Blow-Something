@@ -11,8 +11,8 @@ for i = 1, #files do
 end
 
 local draw = function (drawable, x, y, w, h, ax, ay, r)
-  ax = ax or 0.5
-  ay = ay or 0.5
+  ax = ax or 0.0
+  ay = ay or 0.0
   r = r or 0
   local iw, ih = drawable:getDimensions()
   local sx = w and w / iw or 1

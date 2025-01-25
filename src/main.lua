@@ -1,14 +1,16 @@
-W = 1280
-H = 720
+W = 180
+H = 320
 
 local isMobile = (love.system.getOS() == 'Android' or love.system.getOS() == 'iOS')
 local isWeb = (love.system.getOS() == 'Web')
 
 love.window.setMode(
-  isWeb and (W / 3 * 2) or W,
-  isWeb and (H / 3 * 2) or H,
+  isWeb and (W / 3 * 2) or W * 2,
+  isWeb and (H / 3 * 2) or H * 2,
   { fullscreen = false, highdpi = true }
 )
+
+love.graphics.setDefaultFilter('nearest', 'nearest')
 
 local globalScale, Wx, Hx, offsX, offsY
 
@@ -144,6 +146,7 @@ function love.draw()
 end
 
 function love.keypressed(key)
+  if true then return end
   if key == 'lshift' then
     if not isMobile and not isWeb then
       love.window.setFullscreen(not love.window.getFullscreen())
