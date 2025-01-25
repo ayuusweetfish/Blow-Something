@@ -217,7 +217,7 @@ return function ()
   local inflateStart = nil
 
   local Xc = W * 0.5
-  local Yc = H * 0.46
+  local Yc = math.floor(H * 0.47)
 
   s.press = function (x, y)
     if state == STATE_INFLATE then
@@ -271,7 +271,7 @@ return function ()
     end
   end
 
-  local Wc, Hc = 160, 200
+  local Wc, Hc = 160, 180
   local tex = love.image.newImageData(Wc, Hc, 'rgba8')
   local img = love.graphics.newImage(tex)
 
@@ -286,14 +286,40 @@ return function ()
     love.graphics.clear(1, 1, 1)
 
     love.graphics.setColor(1, 1, 1)
-    draw.img('background', W / 2, 267, W, nil, 0.5, 1)
+    draw.img('background', W / 2, 267 + 10, W, nil, 0.5, 1)
     love.graphics.setColor(0.81, 0.79, 0.76)
     love.graphics.rectangle('fill', 0, 267, W, H)
 
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       -- Bubble
       -- Clear texture
-      tex:mapPixel(function () return 1, 0.96, 0.92, 1 end)
+      tex:mapPixel(function () return 0, 0, 0, 0 end)
+      -- Blit polygon onto texture
+      -- http://alienryderflex.com/polygon_fill/
+      for y = 0, Hc - 1 do
+        local xs = {}
+        local x1, y1 = bubbles.get_pos(n)
+        x1 = Wc / 2 + x1 * dispScale
+        y1 = Hc / 2 + y1 * dispScale
+        for i = 1, n do
+          local x0, y0 = bubbles.get_pos(i)
+          x0 = Wc / 2 + x0 * dispScale
+          y0 = Hc / 2 + y0 * dispScale
+          if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
+            xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
+          end
+          x1, y1 = x0, y0
+        end
+        table.sort(xs)
+        for i = 1, #xs - 1, 2 do
+          if xs[i] >= Wc then break end
+          if xs[i + 1] >= 0 then
+            for x = math.max(0, xs[i]), math.min(Wc - 1, xs[i + 1]) do
+              tex:setPixel(x, y, selPaint[1], selPaint[2], selPaint[3], 0.4)
+            end
+          end
+        end
+      end
       -- Draw lines onto texture
       local pts = {}
       for i = 0, n + 2 do
@@ -311,6 +337,9 @@ return function ()
         line(tex, x0, y0, x1, y1)
         x1, y1, index = x0, y0, index_new
       end
+
+      love.graphics.setColor(1, 0.96, 0.92)
+      love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
 
       img:replacePixels(tex)
       love.graphics.setBlendMode('alpha', 'premultiplied')
@@ -332,6 +361,7 @@ return function ()
     end
 
     love.graphics.setColor(1, 1, 1)
+    draw.img('top', 0, 0)
     draw.img('cat', 10, 198)
     if state == STATE_INITIAL then
       draw.img('stick_small', 128, 217)
