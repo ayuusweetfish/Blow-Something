@@ -45,10 +45,29 @@ local bubbles = function (p)
     return b[i]
   end
 
+  local imp_r = 0.1
   local imp = function (x, y)
-    local i = math.random(n)
-    b[i]:setLinearVelocity(0, 8e0)
-    b[i]:setAwake(true)
+    x = x * scale
+    y = y * scale
+    world:queryBoundingBox(
+      x - imp_r * scale, y - imp_r * scale,
+      x + imp_r * scale, y + imp_r * scale,
+      function (fixt)
+        local b = fixt:getBody()
+        local x1, y1 = b:getPosition()
+        local dx, dy = (x1 - x) / scale, (y1 - y) / scale
+        local dsq = dx * dx + dy * dy
+        if dsq < imp_r * imp_r then
+          local d = math.sqrt(dsq)
+          local t = 1 - d / imp_r
+          local imp_intensity = 1 - t * t
+          local imp_scale = 0.4 * scale * imp_intensity / d
+          b:setLinearVelocity(dx * imp_scale, dy * imp_scale)
+          b:setAwake(true)
+        end
+        return true
+      end
+    )
   end
 
   local update = function (dt)
