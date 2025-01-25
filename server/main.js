@@ -30,6 +30,11 @@ const serveReq = async (req) => {
     const file = (url.pathname === '/' ? '/index.html' : url.pathname)
     return serveFile(req, '../release/Game-Name-web' + file)
   }
+  if (req.method === 'POST' && url.pathname === '/hi') {
+    const payload = await req.arrayBuffer()
+    console.log(payload)
+    return new Response(new TextDecoder().decode(payload))
+  }
   if (req.method === 'POST' && url.pathname === '/look') {
     const payload = await req.arrayBuffer()
     try {

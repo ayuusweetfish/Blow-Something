@@ -2,6 +2,12 @@ local draw = require 'draw_utils'
 local button = require 'button'
 local unpack = unpack or table.unpack
 
+local networkThread = love.thread.newThread('src/network.lua')
+networkThread:start()
+local chReq = love.thread.getChannel('network-req')
+local chResp = love.thread.getChannel('network-resp')
+chReq:push('123')
+
 love.physics.setMeter(1)
 
 local bubbles = function (p)
@@ -485,6 +491,7 @@ return function ()
       bubbles.update(1 / 240)
     end
     particles.update()
+    local v = chResp:pop() if v then print('resp', v) end
   end
 
   local Wc, Hc = 160, 180
