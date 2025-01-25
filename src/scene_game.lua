@@ -193,6 +193,11 @@ return function ()
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
 
+    love.graphics.setColor(1, 1, 1)
+    draw.img('background', W / 2, 267, W, nil, 0.5, 1)
+    love.graphics.setColor(0.81, 0.79, 0.76)
+    love.graphics.rectangle('fill', 0, 267, W, H)
+
     -- Clear texture
     tex:mapPixel(function () return 1, 0.96, 0.92, 1 end)
     local pts = {}
