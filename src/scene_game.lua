@@ -512,6 +512,20 @@ return function ()
     imgCanvas:replacePixels(texCanvas)
   end
 
+  local confetti = draw.get('confetti')
+  local confettiW, confettiH = confetti:getDimensions()
+  local confettiQuads = {}
+  for i = 1, 20 do
+    confettiQuads[i] = love.graphics.newQuad(
+      confettiW / 5 * (i % 5),
+      confettiH / 4 * math.floor(i / 5),
+      confettiW / 5,
+      confettiH / 4,
+      confettiW,
+      confettiH
+    )
+  end
+
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
 
@@ -602,6 +616,12 @@ return function ()
     end
 
     particles.draw()
+
+    if state == STATE_FINAL and sinceState < 400 then
+      local frame = math.floor(sinceState / 20) + 1
+      love.graphics.setColor(1, 1, 1)
+      love.graphics.draw(confetti, confettiQuads[frame], 0, 0, 0, W / (confettiW / 5))
+    end
   end
 
   s.destroy = function ()
