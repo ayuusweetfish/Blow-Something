@@ -62,11 +62,15 @@ local bubbles = function (p)
     return b[i]
   end
 
+  local imp_r = 0.05
+
   local px, py = nil, nil
   local set_ptr = function (x, y) px, py = x * scale, y * scale end
   local rel_ptr = function () px, py = nil, nil end
-
-  local imp_r = 0.05
+  local get_ptr = function ()
+    if px then return px / scale, py / scale, imp_r end
+    return nil
+  end
 
   local update = function (dt)
     if px ~= nil then
@@ -99,6 +103,7 @@ local bubbles = function (p)
     get_body = get_body,
     set_ptr = set_ptr,
     rel_ptr = rel_ptr,
+    get_ptr = get_ptr,
     update = update,
   }
 end
@@ -176,12 +181,19 @@ return function ()
     bubbles.update(1 / 240)
   end
 
+  local Wc, Hc = 224, 224
+  local tex = love.image.newImageData(Wc, Hc, 'rgba8')
+  local img = love.graphics.newImage(tex)
+
+  local line = function (tex, x0, y0, x1, y1)
+    tex:setPixel(math.floor(x0), math.floor(y0), 0, 0, 0, 1)
+  end
+
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
 
-    local Wc, Hc = 112, 112
-    local canvas = love.graphics.newCanvas(Wc, Hc)
-    love.graphics.setCanvas(canvas)
+    -- Clear texture
+    tex:mapPixel(function () return 0, 0, 0, 0 end)
     local pts = {}
     for i = 0, n + 2 do
       local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
@@ -195,14 +207,15 @@ return function ()
     for i = 1, 1000 do
       local t = i / 1000
       local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
-      love.graphics.line(x0, y0, x1, y1)
+      -- love.graphics.line(x0, y0, x1, y1)
+      line(tex, x0, y0, x1, y1)
       x1, y1, index = x0, y0, index_new
     end
-    love.graphics.setCanvas()
 
+    img:replacePixels(tex)
     love.graphics.setBlendMode('alpha', 'premultiplied')
     love.graphics.setColor(1, 1, 1)
-    love.graphics.draw(canvas, W / 2, H / 2, 0,
+    love.graphics.draw(img, W / 2, H / 2, 0,
       dispScale * 2 / Wc, dispScale * 2 / Hc, Wc / 2, Hc / 2)
 
     love.graphics.setBlendMode('alpha')
@@ -219,6 +232,15 @@ return function ()
         love.graphics.circle('fill', x0, y0, 2)
         x1, y1 = x0, y0
       end
+    end
+
+    local px, py, pr = bubbles.get_ptr()
+    if px then
+      love.graphics.setColor(1, 0.7, 0.7, 0.7)
+      love.graphics.circle('fill',
+        W / 2 + px * dispScale,
+        H / 2 + py * dispScale,
+        pr * dispScale)
     end
   end
 
