@@ -56,6 +56,7 @@ ignore_list = [
     ".tar.gz$",
     ".love$",
     ".exe$",
+    "^server/",
     "^release/",
 
     # Boon-specific files and directories
