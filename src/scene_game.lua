@@ -34,8 +34,8 @@ local bubbles = function (p)
     for i = 1, n do
       local x = math.cos(i / n * math.pi * 2) * expected_r
       local y = math.sin(i / n * math.pi * 2) * expected_r
-      x = x + (love.math.noise(x*0.6 - 15, y*0.6) - 0.5) * 4e-2
-      y = y + (love.math.noise(x*0.6, y*0.6 + 10) - 0.5) * 4e-2
+      x = x + (love.math.noise(x*0.6 - 15, y*0.6) - 0.5) * 7e-2 * expected_r
+      y = y + (love.math.noise(x*0.6, y*0.6 + 10) - 0.5) * 7e-2 * expected_r
       b[i]:setPosition(x * scale * 0.94, y * scale * 0.94)
     end
 
@@ -228,7 +228,10 @@ return function ()
     for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
     local x1 = (x - Xc) / dispScale
     local y1 = (y - Yc) / dispScale
-    bubbles.set_ptr(x1, y1)
+
+    if state == STATE_PAINT then
+      bubbles.set_ptr(x1, y1)
+    end
   end
 
   s.hover = function (x, y)
@@ -238,7 +241,10 @@ return function ()
     for i = 1, #buttons do if buttons[i].move(x, y) then return true end end
     local x1 = (x - Xc) / dispScale
     local y1 = (y - Yc) / dispScale
-    bubbles.set_ptr(x1, y1)
+
+    if state == STATE_PAINT then
+      bubbles.set_ptr(x1, y1)
+    end
   end
 
   s.release = function (x, y)
@@ -248,7 +254,10 @@ return function ()
     end
 
     for i = 1, #buttons do if buttons[i].release(x, y) then return true end end
-    bubbles.rel_ptr()
+
+    if state == STATE_PAINT then
+      bubbles.rel_ptr()
+    end
   end
 
   s.update = function ()
@@ -267,6 +276,7 @@ return function ()
   local img = love.graphics.newImage(tex)
 
   local line = function (tex, x0, y0, x1, y1)
+    -- Distance is less than 1
     if x0 >= 0 and x0 < Wc and y0 >= 0 and y0 < Hc then
       tex:setPixel(math.floor(x0), math.floor(y0), selPaint[1], selPaint[2], selPaint[3], 1)
     end
@@ -298,7 +308,6 @@ return function ()
       for i = 1, 1000 do
         local t = i / 1000
         local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
-        -- love.graphics.line(x0, y0, x1, y1)
         line(tex, x0, y0, x1, y1)
         x1, y1, index = x0, y0, index_new
       end
@@ -314,7 +323,7 @@ return function ()
 
       local px, py, pr = bubbles.get_ptr()
       if px then
-        love.graphics.setColor(1, 0.7, 0.7, 0.7)
+        love.graphics.setColor(0.8, 0.8, 0.8, 0.5)
         love.graphics.circle('fill',
           Xc + px * dispScale,
           Yc + py * dispScale,
