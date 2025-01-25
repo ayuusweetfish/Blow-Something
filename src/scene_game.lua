@@ -9,7 +9,9 @@ local bubbles = function (p)
   local b = {}
   local world = love.physics.newWorld()
   for i = 1, n do
-    local body = love.physics.newBody(world, 0, 0, 'dynamic')
+    local x, y = p[i][1] * scale, p[i][2] * scale
+
+    local body = love.physics.newBody(world, x, y, 'dynamic')
     local shape = love.physics.newCircleShape(1e-4 * scale)
     local fixt = love.physics.newFixture(body, shape)
 
@@ -17,10 +19,14 @@ local bubbles = function (p)
     body:setAngularDamping(1.0) -- Damp a lot
     fixt:setRestitution(0.9)    -- Bounce a lot
 
-    body:setPosition(p[i][1] * scale, p[i][2] * scale)
-
     b[i] = body
   end
+
+  local body_cen = love.physics.newBody(world, 0, 0, 'dynamic')
+  local shape = love.physics.newCircleShape(1e-4 * scale)
+  local fixt = love.physics.newFixture(body_cen, shape)
+
+  local expected_r = 0.5
 
   for i = 1, n do
     local b1 = b[i]
@@ -30,7 +36,19 @@ local bubbles = function (p)
     local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
     joint:setDampingRatio(10) -- Oscillate less
     joint:setFrequency(3.0)
-    joint:setLength(3e-2 * scale)
+    joint:setLength(expected_r * 2 * math.sin(math.pi / n) * scale)
+
+    local b3 = b[(i + 1) % n + 1]
+    local x3, y3 = b3:getPosition()
+    local joint = love.physics.newDistanceJoint(b1, b3, x1, y1, x3, y3)
+    joint:setDampingRatio(10) -- Oscillate less
+    joint:setFrequency(3.0)
+    joint:setLength(expected_r * 2 * math.sin(2 * math.pi / n) * scale)
+
+    local joint = love.physics.newDistanceJoint(b1, body_cen, x1, y1, 0, 0)
+    joint:setDampingRatio(0.0) -- Oscillate less
+    joint:setFrequency(0.05)
+    joint:setLength(expected_r * scale)
   end
 
   local set_pos = function (i, x, y)
