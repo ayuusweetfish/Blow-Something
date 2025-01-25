@@ -1,4 +1,5 @@
 local draw = require 'draw_utils'
+local button = require 'button'
 
 love.physics.setMeter(1)
 
@@ -157,7 +158,46 @@ return function ()
   end
   local bubbles = bubbles(p)
 
+  local STATE_INITIAL = 0
+  local STATE_INFLATE = 1
+  local STATE_PAINT = 2
+
+  local state, sinceState = STATE_INITIAL, 0
+
+  local buttons = {}
+  local btnStick
+  btnStick = button({ x = 128, y = 217, w = 16, h = 58 }, function ()
+    print('start inflating')
+    state, sinceState = STATE_INFLATE, 0
+    btnStick.enabled = false
+  end)
+  buttons[#buttons + 1] = btnStick
+
+  local selPaint = { 1, .19, .30 }
+  -- Palette buttons
+  local paletteButton = function (x, y, w, h, r, g, b)
+    buttons[#buttons + 1] = button({ x = x, y = y, w = w, h = h }, function ()
+      selPaint = { r, g, b }
+    end)
+  end
+  paletteButton(46, 269, 17, 16, 1, .19, .30)
+  paletteButton(64, 269, 20, 16, 1, .60, .14)
+  paletteButton(85, 269, 20, 16, .72, .67, .25)
+  paletteButton(46, 286, 17, 21, .58, .60, .92)
+  paletteButton(64, 286, 20, 21, 1, .20, .81)
+  paletteButton(85, 286, 20, 21, .62, .93, .98)
+  paletteButton(106, 269, 17, 38, .5, .5, .5)
+
+  local infateStart = nil
+  local bubbleSize = nil
+
   s.press = function (x, y)
+    if state == STATE_INFLATE then
+      infateStart = sinceState
+      return true
+    end
+
+    for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
     local x1 = (x - W / 2) / dispScale
     local y1 = (y - H / 2) / dispScale
     bubbles.set_ptr(x1, y1)
@@ -167,17 +207,28 @@ return function ()
   end
 
   s.move = function (x, y)
+    for i = 1, #buttons do if buttons[i].move(x, y) then return true end end
     local x1 = (x - W / 2) / dispScale
     local y1 = (y - H / 2) / dispScale
     bubbles.set_ptr(x1, y1)
   end
 
   s.release = function (x, y)
+    if state == STATE_INFLATE and infateStart then
+      print('start painting')
+      bubbleSize = sinceState - infateStart
+      state, sinceState = STATE_PAINT, 0
+    end
+
+    for i = 1, #buttons do if buttons[i].release(x, y) then return true end end
     bubbles.rel_ptr()
   end
 
   s.update = function ()
-    bubbles.update(1 / 240)
+    sinceState = sinceState + 1
+    if state == STATE_PAINT then
+      bubbles.update(1 / 240)
+    end
   end
 
   local Wc, Hc = 160, 200
@@ -186,7 +237,7 @@ return function ()
 
   local line = function (tex, x0, y0, x1, y1)
     if x0 >= 0 and x0 < Wc and y0 >= 0 and y0 < Hc then
-      tex:setPixel(math.floor(x0), math.floor(y0), 0, 0, 0, 1)
+      tex:setPixel(math.floor(x0), math.floor(y0), selPaint[1], selPaint[2], selPaint[3], 1)
     end
   end
 
@@ -198,42 +249,46 @@ return function ()
     love.graphics.setColor(0.81, 0.79, 0.76)
     love.graphics.rectangle('fill', 0, 267, W, H)
 
-    -- Clear texture
-    tex:mapPixel(function () return 1, 0.96, 0.92, 1 end)
-    local pts = {}
-    for i = 0, n + 2 do
-      local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
-      local x0 = Wc / 2 + x * (Wc / 2)
-      local y0 = Hc / 2 + y * (Hc / 2)
-      pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
-    end
-    local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
-    love.graphics.setLineWidth(1)
-    love.graphics.setColor(0, 0, 0)
-    for i = 1, 1000 do
-      local t = i / 1000
-      local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
-      -- love.graphics.line(x0, y0, x1, y1)
-      line(tex, x0, y0, x1, y1)
-      x1, y1, index = x0, y0, index_new
-    end
+    if state == STATE_PAINT then
+      -- Bubble
+      -- Clear texture
+      tex:mapPixel(function () return 1, 0.96, 0.92, 1 end)
+      -- Draw lines onto texture
+      local pts = {}
+      for i = 0, n + 2 do
+        local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
+        local x0 = Wc / 2 + x * (Wc / 2)
+        local y0 = Hc / 2 + y * (Hc / 2)
+        pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
+      end
+      local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
+      love.graphics.setLineWidth(1)
+      love.graphics.setColor(0, 0, 0)
+      for i = 1, 1000 do
+        local t = i / 1000
+        local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
+        -- love.graphics.line(x0, y0, x1, y1)
+        line(tex, x0, y0, x1, y1)
+        x1, y1, index = x0, y0, index_new
+      end
 
-    img:replacePixels(tex)
-    love.graphics.setBlendMode('alpha', 'premultiplied')
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.draw(img,
-      math.floor(W / 2 - Wc / 2),
-      math.floor(H * 0.46 - Hc / 2),
-      0, dispScale * 2 / Wc)
-    love.graphics.setBlendMode('alpha')
+      img:replacePixels(tex)
+      love.graphics.setBlendMode('alpha', 'premultiplied')
+      love.graphics.setColor(1, 1, 1)
+      love.graphics.draw(img,
+        math.floor(W / 2 - Wc / 2),
+        math.floor(H * 0.46 - Hc / 2),
+        0, dispScale * 2 / Wc)
+      love.graphics.setBlendMode('alpha')
 
-    local px, py, pr = bubbles.get_ptr()
-    if px then
-      love.graphics.setColor(1, 0.7, 0.7, 0.7)
-      love.graphics.circle('fill',
-        W / 2 + px * dispScale,
-        H / 2 + py * dispScale,
-        pr * dispScale)
+      local px, py, pr = bubbles.get_ptr()
+      if px then
+        love.graphics.setColor(1, 0.7, 0.7, 0.7)
+        love.graphics.circle('fill',
+          W / 2 + px * dispScale,
+          H / 2 + py * dispScale,
+          pr * dispScale)
+      end
     end
 
     love.graphics.setColor(1, 1, 1)

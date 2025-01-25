@@ -7,7 +7,17 @@ return function (drawable, fn)
   s.s = 1
   s.enabled = true
 
-  local w, h = drawable:getDimensions()
+  local w, h
+  if drawable.getDimensions then
+    drawable:getDimensions()
+  else
+    w = drawable.w
+    h = drawable.h
+    if drawable.x then
+      s.x = drawable.x + w/2
+      s.y = drawable.y + h/2
+    end
+  end
   local scale = 1
 
   local held = false
