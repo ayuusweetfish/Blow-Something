@@ -477,11 +477,11 @@ return function ()
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
           chReq:push(s)
+          recognitionResult = '...'
           -- Move on
           if bubblesRemaining > 0 then
             state, sinceState = STATE_INITIAL, 0
             btnStick.enabled = true
-            recognitionResult = nil
           else
             state, sinceState = STATE_FINAL, 0
           end
