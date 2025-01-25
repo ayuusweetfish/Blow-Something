@@ -63,48 +63,43 @@ local bubbles = function (p)
     return b[i]
   end
 
+  local px, py = nil, nil
+  local set_ptr = function (x, y) px, py = x * scale, y * scale end
+  local rel_ptr = function () px, py = nil, nil end
+
   local imp_r = 0.05
-  local imp = function (x, y)
-    x = x * scale
-    y = y * scale
-    world:queryBoundingBox(
-      x - imp_r * scale, y - imp_r * scale,
-      x + imp_r * scale, y + imp_r * scale,
-      function (fixt)
-        local b = fixt:getBody()
-        local x1, y1 = b:getPosition()
-        local dx, dy = (x1 - x) / scale, (y1 - y) / scale
-        local dsq = dx * dx + dy * dy
-        if dsq < imp_r * imp_r then
-          local d = math.sqrt(dsq)
-          local t = 1 - d / imp_r
-          local imp_intensity = 1 - t * t
-          local imp_scale = 0.3 * scale * imp_intensity / d
-          b:setLinearVelocity(dx * imp_scale, dy * imp_scale)
-          b:setAwake(true)
-        end
-        return true
-      end
-    )
-  end
 
   local update = function (dt)
-    world:update(dt)
-    local js = world:getJoints()
-    for i = 1, #js do
-      local b1, b2 = js[i]:getBodies()
-      local x1, y1 = b1:getPosition()
-      local x2, y2 = b2:getPosition()
-      local d = math.sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2)
-      -- print(js[i]:getLength(), d)
+    if px ~= nil then
+      world:queryBoundingBox(
+        px - imp_r * scale, py - imp_r * scale,
+        px + imp_r * scale, py + imp_r * scale,
+        function (fixt)
+          local b = fixt:getBody()
+          local x1, y1 = b:getPosition()
+          local dx, dy = (x1 - px) / scale, (y1 - py) / scale
+          local dsq = dx * dx + dy * dy
+          if dsq < imp_r * imp_r then
+            local d = math.sqrt(dsq)
+            local t = 1 - d / imp_r
+            local imp_intensity = 1 - t * t
+            local imp_scale = 3e-6 * scale * imp_intensity / d
+            b:applyForce(dx * imp_scale, dy * imp_scale)
+          end
+          return true
+        end
+      )
     end
+
+    world:update(dt)
   end
 
   return {
     set_pos = set_pos,
     get_pos = get_pos,
     get_body = get_body,
-    imp = imp,
+    set_ptr = set_ptr,
+    rel_ptr = rel_ptr,
     update = update,
   }
 end
@@ -162,16 +157,20 @@ return function ()
   s.press = function (x, y)
     local x1 = (x - W / 2) / dispScale
     local y1 = (y - H / 2) / dispScale
-    bubbles.imp(x1, y1)
+    bubbles.set_ptr(x1, y1)
   end
 
   s.hover = function (x, y)
   end
 
   s.move = function (x, y)
+    local x1 = (x - W / 2) / dispScale
+    local y1 = (y - H / 2) / dispScale
+    bubbles.set_ptr(x1, y1)
   end
 
   s.release = function (x, y)
+    bubbles.rel_ptr()
   end
 
   s.update = function ()
