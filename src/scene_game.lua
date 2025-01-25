@@ -185,7 +185,9 @@ return function ()
   local img = love.graphics.newImage(tex)
 
   local line = function (tex, x0, y0, x1, y1)
-    tex:setPixel(math.floor(x0), math.floor(y0), 0, 0, 0, 1)
+    if x0 >= 0 and x0 < Wc and y0 >= 0 and y0 < Hc then
+      tex:setPixel(math.floor(x0), math.floor(y0), 0, 0, 0, 1)
+    end
   end
 
   s.draw = function ()
