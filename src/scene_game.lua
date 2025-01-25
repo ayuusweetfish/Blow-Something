@@ -29,7 +29,12 @@ local bubbles = function (p)
   local fixt = love.physics.newFixture(body_cen, shape)
   body_cen:setMass(10)
 
-  local expected_r = 0.5
+  local joints_inflating = {}
+  local set_size = function (expected_r)
+    for i = 1, #joints_inflating do
+      joints_inflating[i].joint:setLength(expected_r * joints_inflating[i].rate)
+    end
+  end
 
   for i = 1, n do
     local b1 = b[i]
@@ -41,14 +46,23 @@ local bubbles = function (p)
       local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
       joint:setDampingRatio(10) -- Oscillate less
       joint:setFrequency(j == 3 and 3 or 4)
-      joint:setLength(expected_r * 2 * math.sin(math.pi / n * j) * scale)
+      -- joint:setLength(expected_r * 2 * math.sin(math.pi / n * j) * scale)
+      joints_inflating[#joints_inflating + 1] = {
+        joint = joint,
+        rate = math.sin(math.pi / n * j) * scale,
+      }
     end
 
     local joint = love.physics.newDistanceJoint(b1, body_cen, x1, y1, 0, 0)
     joint:setDampingRatio(0)
     joint:setFrequency(0.05)
-    joint:setLength(expected_r * scale)
+    -- joint:setLength(expected_r * scale)
+    joints_inflating[#joints_inflating + 1] = {
+      joint = joint,
+      rate = 1 * scale,
+    }
   end
+  set_size(0.1)
 
   local set_pos = function (i, x, y)
     b[i]:setPosition(x * scale, y * scale)
@@ -101,6 +115,7 @@ local bubbles = function (p)
     set_pos = set_pos,
     get_pos = get_pos,
     get_body = get_body,
+    set_size = set_size,
     set_ptr = set_ptr,
     rel_ptr = rel_ptr,
     get_ptr = get_ptr,
@@ -152,8 +167,8 @@ return function ()
   local p = {}
   for i = 1, n do
     p[i] = {
-      math.cos(i / n * math.pi * 2) * 0.5,
-      math.sin(i / n * math.pi * 2) * 0.3,
+      math.cos(i / n * math.pi * 2) * 0.1,
+      math.sin(i / n * math.pi * 2) * 0.1,
     }
   end
   local bubbles = bubbles(p)
@@ -188,15 +203,14 @@ return function ()
   paletteButton(85, 286, 20, 21, .62, .93, .98)
   paletteButton(106, 269, 17, 38, .5, .5, .5)
 
-  local infateStart = nil
-  local bubbleSize = nil
+  local inflateStart = nil
 
   local Xc = W * 0.5
   local Yc = H * 0.46
 
   s.press = function (x, y)
     if state == STATE_INFLATE then
-      infateStart = sinceState
+      inflateStart = sinceState
       return true
     end
 
@@ -217,9 +231,8 @@ return function ()
   end
 
   s.release = function (x, y)
-    if state == STATE_INFLATE and infateStart then
-      print('start painting')
-      bubbleSize = sinceState - infateStart
+    if state == STATE_INFLATE and inflateStart then
+      print('start painting', sinceState - inflateStart)
       state, sinceState = STATE_PAINT, 0
     end
 
@@ -229,7 +242,11 @@ return function ()
 
   s.update = function ()
     sinceState = sinceState + 1
-    if state == STATE_PAINT then
+    if state == STATE_INFLATE and inflateStart then
+      local t = sinceState - inflateStart
+      bubbles.set_size(math.max(0.2, t / 480))
+    end
+    if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
     end
   end
@@ -252,7 +269,7 @@ return function ()
     love.graphics.setColor(0.81, 0.79, 0.76)
     love.graphics.rectangle('fill', 0, 267, W, H)
 
-    if state == STATE_PAINT then
+    if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       -- Bubble
       -- Clear texture
       tex:mapPixel(function () return 1, 0.96, 0.92, 1 end)
@@ -300,7 +317,10 @@ return function ()
     draw.img('bottle', 128, 217)
     draw.img('palette', 43, 266)
     draw.img('camera', 143, 263)
-    -- draw.img('stick_large', 98, 155)
+
+    if state == STATE_INFLATE then
+      draw.img('stick_large', 98, 155)
+    end
   end
 
   s.destroy = function ()
