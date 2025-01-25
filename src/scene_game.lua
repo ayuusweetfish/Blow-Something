@@ -60,7 +60,7 @@ local bubbles = function (p)
       joints_inflating[#joints_inflating + 1] = {
         joint = joint,
         rate = 2 * math.sin(math.pi / n * j) * scale,
-        freq_rate = (j == 3 and 3 or 4) * 0.1
+        freq_rate = (j == 3 and 3 or 4) * 0.05
       }
     end
 
@@ -70,7 +70,7 @@ local bubbles = function (p)
     joints_inflating[#joints_inflating + 1] = {
       joint = joint,
       rate = 1 * scale,
-      freq_rate = 0.05 * 0.1,
+      freq_rate = 0.05 * 0.05,
     }
   end
   set_size(0.1)
@@ -275,13 +275,6 @@ return function ()
   local tex = love.image.newImageData(Wc, Hc, 'rgba8')
   local img = love.graphics.newImage(tex)
 
-  local line = function (tex, x0, y0, x1, y1)
-    -- Distance is less than 1
-    if x0 >= 0 and x0 < Wc and y0 >= 0 and y0 < Hc then
-      tex:setPixel(math.floor(x0), math.floor(y0), selPaint[1], selPaint[2], selPaint[3], 1)
-    end
-  end
-
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
 
@@ -290,8 +283,14 @@ return function ()
     love.graphics.setColor(0.81, 0.79, 0.76)
     love.graphics.rectangle('fill', 0, 267, W, H)
 
+    local paintR, paintG, paintB = selPaint[1], selPaint[2], selPaint[3]
+
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       -- Bubble
+      local bubbleOpacity = 0.5
+      if state == STATE_PAINT then
+        bubbleOpacity = 0.2 + 0.3 * math.exp(-sinceState / 960)
+      end
       -- Clear texture
       tex:mapPixel(function () return 0, 0, 0, 0 end)
       -- Blit polygon onto texture
@@ -315,7 +314,7 @@ return function ()
           if xs[i] >= Wc then break end
           if xs[i + 1] >= 0 then
             for x = math.max(0, xs[i]), math.min(Wc - 1, xs[i + 1]) do
-              tex:setPixel(x, y, selPaint[1], selPaint[2], selPaint[3], 0.4)
+              tex:setPixel(x, y, paintR, paintG, paintB, bubbleOpacity)
             end
           end
         end
@@ -334,7 +333,10 @@ return function ()
       for i = 1, 1000 do
         local t = i / 1000
         local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
-        line(tex, x0, y0, x1, y1)
+        -- Distance is less than 1
+        if x0 >= 0 and x0 < Wc and y0 >= 0 and y0 < Hc then
+          tex:setPixel(math.floor(x0), math.floor(y0), paintR, paintG, paintB, 1)
+        end
         x1, y1, index = x0, y0, index_new
       end
 
@@ -342,7 +344,7 @@ return function ()
       love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
 
       img:replacePixels(tex)
-      love.graphics.setBlendMode('alpha', 'premultiplied')
+      love.graphics.setBlendMode('alpha')
       love.graphics.setColor(1, 1, 1)
       love.graphics.draw(img,
         math.floor(Xc - Wc / 2),
