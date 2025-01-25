@@ -91,6 +91,40 @@ local bubbles = function (p)
   }
 end
 
+-- Returns: x, y, new index
+local CatmullRomSpline = function (t, pts, index)
+  local n = #pts
+  while index <= #pts - 4 and t > pts[index + 2].knot do
+    index = index + 1
+  end
+
+  local t0, t1, t2, t3 =
+    pts[index + 0].knot, pts[index + 1].knot,
+    pts[index + 2].knot, pts[index + 3].knot
+  local lerp = function (t, t0, t1, x0, x1)
+    return ((t1 - t) * x0 + (t - t0) * x1) / (t1 - t0)
+  end
+  local interpolate = function (x0, x1, x2, x3)
+    local a1 = lerp(t, t0, t1, x0, x1)
+    local a2 = lerp(t, t1, t2, x1, x2)
+    local a3 = lerp(t, t2, t3, x2, x3)
+    local b1 = lerp(t, t0, t2, a1, a2)
+    local b2 = lerp(t, t1, t3, a2, a3)
+    local c1 = lerp(t, t1, t2, b1, b2)
+    return c1
+  end
+
+  local x0, x1, x2, x3 =
+    pts[index + 0].x, pts[index + 1].x,
+    pts[index + 2].x, pts[index + 3].x
+  local y0, y1, y2, y3 =
+    pts[index + 0].y, pts[index + 1].y,
+    pts[index + 2].y, pts[index + 3].y
+  local x = interpolate(x0, x1, x2, x3)
+  local y = interpolate(y0, y1, y2, y3)
+  return x, y, index
+end
+
 return function ()
   local s = {}
   local W, H = W, H
@@ -139,8 +173,23 @@ return function ()
       local x0 = W / 2 + x * dispScale
       local y0 = H / 2 + y * dispScale
       love.graphics.circle('fill', x0, y0, 2)
-      love.graphics.line(x0, y0, x1, y1)
+      -- love.graphics.line(x0, y0, x1, y1)
       x1, y1 = x0, y0
+    end
+
+    local pts = {}
+    for i = 0, n + 2 do
+      local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
+      local x0 = W / 2 + x * dispScale
+      local y0 = H / 2 + y * dispScale
+      pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
+    end
+    local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
+    for i = 1, 1000 do
+      local t = i / 1000
+      local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
+      love.graphics.line(x0, y0, x1, y1)
+      x1, y1, index = x0, y0, index_new
     end
   end
 
