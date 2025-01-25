@@ -9,8 +9,8 @@
       body { margin: 0; padding: 0; background: #040404; }
       canvas {
         border: none; background: black;
-        width: 100vw; height: 56.25vw;
-        max-height: 100vh; max-width: 177.778vh;
+        width: 56.25vh; height: 100vh;
+        max-height: 177.778vw; max-width: 100vw;
         position: absolute; margin: auto;
         top: 0; bottom: 0; left: 0; right: 0;
       }
@@ -23,7 +23,7 @@
     </style>
   </head>
   <body>
-    <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="720" height="480"></canvas>
+    <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="360" height="640"></canvas>
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <p id='loading'>Loading...</p>
 
