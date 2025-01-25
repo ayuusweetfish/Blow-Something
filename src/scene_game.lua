@@ -87,6 +87,24 @@ local bubbles = function (p)
     return b[i]
   end
 
+  local check_inside = function (x, y)
+    x, y = x * scale, y * scale
+    -- http://alienryderflex.com/polygon/
+    local x1, y1 = b[n]:getPosition()
+    local parity = false
+    for i = 1, n do
+      local x0, y0 = b[i]:getPosition()
+      if ((y0 < y and y1 >= y) or (y1 < y) and (y0 >= y)) and
+        (x0 <= x or x1 <= x)
+      then
+        local w = (x0 + (y - y0) / (y1 - y0) * (x1 - x0) < x)
+        parity = not (parity == w)
+      end
+      x1, y1 = x0, y0
+    end
+    return parity
+  end
+
   local imp_r = 0.1
 
   local px, py = nil, nil
@@ -127,6 +145,7 @@ local bubbles = function (p)
     get_pos = get_pos,
     get_body = get_body,
     set_size = set_size,
+    check_inside = check_inside,
     set_ptr = set_ptr,
     rel_ptr = rel_ptr,
     get_ptr = get_ptr,
@@ -189,8 +208,13 @@ return function ()
   local STATE_INITIAL = 0
   local STATE_INFLATE = 1
   local STATE_PAINT = 2
+  local STATE_FINAL = 3
 
   local state, sinceState = STATE_INITIAL, 0
+
+  local inflateStart = nil
+  local paintPressStart = nil
+  local paintPressX0, paintPressY0
 
   local buttons = {}
   local btnStick
@@ -198,6 +222,7 @@ return function ()
     print('start inflating')
     bubblesRemaining = bubblesRemaining - 1
     state, sinceState = STATE_INFLATE, 0
+    inflateStart = nil
     btnStick.enabled = false
   end)
   buttons[#buttons + 1] = btnStick
@@ -217,8 +242,6 @@ return function ()
   paletteButton(85, 286, 20, 21, .62, .93, .98)
   paletteButton(106, 269, 17, 38, .5, .5, .5)
 
-  local inflateStart = nil
-
   local Xc = W * 0.5
   local Yc = math.floor(H * 0.47)
 
@@ -234,6 +257,8 @@ return function ()
 
     if state == STATE_PAINT then
       bubbles.set_ptr(x1, y1)
+      paintPressStart = sinceState
+      paintPressX0, paintPressY0 = x, y
     end
   end
 
@@ -260,6 +285,22 @@ return function ()
 
     if state == STATE_PAINT then
       bubbles.rel_ptr()
+      if paintPressStart and sinceState - paintPressStart <= 120 and
+        (x - paintPressX0) * (x - paintPressX0) +
+        (y - paintPressY0) * (y - paintPressY0) <= 20
+      then
+        local x1 = (x - Xc) / dispScale
+        local y1 = (y - Yc) / dispScale
+        -- Is inside?
+        if bubbles.check_inside(x1, y1) then
+          if bubblesRemaining > 0 then
+            state, sinceState = STATE_INITIAL, 0
+            btnStick.enabled = true
+          else
+            state, sinceState = STATE_FINAL, 0
+          end
+        end
+      end
     end
   end
 
