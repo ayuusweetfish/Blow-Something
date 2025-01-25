@@ -1,6 +1,7 @@
 local draw = require 'draw_utils'
 
 love.physics.setMeter(1)
+love.graphics.setDefaultFilter('nearest', 'nearest')
 
 local bubbles = function (p)
   local n = #p
@@ -177,34 +178,47 @@ return function ()
 
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.setLineWidth(3)
-    local x1, y1
-    local x, y = bubbles.get_pos(n)
-    x1 = W / 2 + x * dispScale
-    y1 = H / 2 + y * dispScale
-    for i = 1, n do
-      local x, y = bubbles.get_pos(i)
-      local x0 = W / 2 + x * dispScale
-      local y0 = H / 2 + y * dispScale
-      love.graphics.circle('fill', x0, y0, 2)
-      -- love.graphics.line(x0, y0, x1, y1)
-      x1, y1 = x0, y0
-    end
 
+    local Wc, Hc = 112, 112
+    local canvas = love.graphics.newCanvas(Wc, Hc)
+    love.graphics.setCanvas(canvas)
     local pts = {}
     for i = 0, n + 2 do
       local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
-      local x0 = W / 2 + x * dispScale
-      local y0 = H / 2 + y * dispScale
+      local x0 = Wc / 2 + x * (Wc / 2)
+      local y0 = Hc / 2 + y * (Hc / 2)
       pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
     end
     local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(0, 0, 0)
     for i = 1, 1000 do
       local t = i / 1000
       local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
       love.graphics.line(x0, y0, x1, y1)
       x1, y1, index = x0, y0, index_new
+    end
+    love.graphics.setCanvas()
+
+    love.graphics.setBlendMode('alpha', 'premultiplied')
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.draw(canvas, W / 2, H / 2, 0,
+      dispScale * 2 / Wc, dispScale * 2 / Hc, Wc / 2, Hc / 2)
+
+    love.graphics.setBlendMode('alpha')
+    if false then
+      love.graphics.setColor(0.4, 0.4, 0)
+      local x1, y1
+      local x, y = bubbles.get_pos(n)
+      x1 = W / 2 + x * dispScale
+      y1 = H / 2 + y * dispScale
+      for i = 1, n do
+        local x, y = bubbles.get_pos(i)
+        local x0 = W / 2 + x * dispScale
+        local y0 = H / 2 + y * dispScale
+        love.graphics.circle('fill', x0, y0, 2)
+        x1, y1 = x0, y0
+      end
     end
   end
 
