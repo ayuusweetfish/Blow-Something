@@ -60,7 +60,7 @@ local bubbles = function (p)
       joints_inflating[#joints_inflating + 1] = {
         joint = joint,
         rate = 2 * math.sin(math.pi / n * j) * scale,
-        freq_rate = (j == 3 and 3 or 4) * 0.05
+        freq_rate = (j == 3 and 3 or 4) * 0.2
       }
     end
 
@@ -70,7 +70,7 @@ local bubbles = function (p)
     joints_inflating[#joints_inflating + 1] = {
       joint = joint,
       rate = 1 * scale,
-      freq_rate = 0.05 * 0.05,
+      freq_rate = 0.05 * 0.2,
     }
   end
   set_size(0.1)
@@ -184,6 +184,8 @@ return function ()
   end
   local bubbles = bubbles(p)
 
+  local bubblesRemaining = 3
+
   local STATE_INITIAL = 0
   local STATE_INFLATE = 1
   local STATE_PAINT = 2
@@ -194,6 +196,7 @@ return function ()
   local btnStick
   btnStick = button({ x = 128, y = 217, w = 16, h = 58 }, function ()
     print('start inflating')
+    bubblesRemaining = bubblesRemaining - 1
     state, sinceState = STATE_INFLATE, 0
     btnStick.enabled = false
   end)
@@ -272,7 +275,8 @@ return function ()
   end
 
   local Wc, Hc = 160, 180
-  local tex = love.image.newImageData(Wc, Hc, 'rgba8')
+  local WcEx = 10
+  local tex = love.image.newImageData(Wc + WcEx * 2, Hc, 'rgba8')
   local img = love.graphics.newImage(tex)
 
   s.draw = function ()
@@ -283,6 +287,9 @@ return function ()
     love.graphics.setColor(0.81, 0.79, 0.76)
     love.graphics.rectangle('fill', 0, 267, W, H)
 
+    -- Canvas background
+    love.graphics.setColor(1, 0.96, 0.92)
+    love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
     local paintR, paintG, paintB = selPaint[1], selPaint[2], selPaint[3]
 
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
@@ -298,11 +305,11 @@ return function ()
       for y = 0, Hc - 1 do
         local xs = {}
         local x1, y1 = bubbles.get_pos(n)
-        x1 = Wc / 2 + x1 * dispScale
+        x1 = Wc / 2 + x1 * dispScale + WcEx
         y1 = Hc / 2 + y1 * dispScale
         for i = 1, n do
           local x0, y0 = bubbles.get_pos(i)
-          x0 = Wc / 2 + x0 * dispScale
+          x0 = Wc / 2 + x0 * dispScale + WcEx
           y0 = Hc / 2 + y0 * dispScale
           if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
             xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
@@ -311,9 +318,9 @@ return function ()
         end
         table.sort(xs)
         for i = 1, #xs - 1, 2 do
-          if xs[i] >= Wc then break end
+          if xs[i] >= Wc + WcEx * 2 then break end
           if xs[i + 1] >= 0 then
-            for x = math.max(0, xs[i]), math.min(Wc - 1, xs[i + 1]) do
+            for x = math.max(0, math.floor(xs[i])), math.min(Wc + WcEx * 2 - 1, math.floor(xs[i + 1])) do
               tex:setPixel(x, y, paintR, paintG, paintB, bubbleOpacity)
             end
           end
@@ -323,31 +330,26 @@ return function ()
       local pts = {}
       for i = 0, n + 2 do
         local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
-        local x0 = Wc / 2 + x * dispScale
+        local x0 = Wc / 2 + x * dispScale + WcEx
         local y0 = Hc / 2 + y * dispScale
         pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
       end
       local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
-      love.graphics.setLineWidth(1)
-      love.graphics.setColor(0, 0, 0)
       for i = 1, 1000 do
         local t = i / 1000
         local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
         -- Distance is less than 1
-        if x0 >= 0 and x0 < Wc and y0 >= 0 and y0 < Hc then
+        if x0 >= 0 and x0 < Wc + WcEx * 2 and y0 >= 0 and y0 < Hc then
           tex:setPixel(math.floor(x0), math.floor(y0), paintR, paintG, paintB, 1)
         end
         x1, y1, index = x0, y0, index_new
       end
 
-      love.graphics.setColor(1, 0.96, 0.92)
-      love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
-
       img:replacePixels(tex)
       love.graphics.setBlendMode('alpha')
       love.graphics.setColor(1, 1, 1)
       love.graphics.draw(img,
-        math.floor(Xc - Wc / 2),
+        math.floor(Xc - Wc / 2 - WcEx),
         math.floor(Yc - Hc / 2),
         0, dispScale * 2 / Wc)
       love.graphics.setBlendMode('alpha')
@@ -365,8 +367,8 @@ return function ()
     love.graphics.setColor(1, 1, 1)
     draw.img('top', 0, 0)
     draw.img('cat', 10, 198)
-    if state == STATE_INITIAL then
-      draw.img('stick_small', 128, 217)
+    for i = 1, bubblesRemaining do
+      draw.img('stick_small', 128 - (i - 1) * 2, 217)
     end
     draw.img('bottle', 128, 217)
     draw.img('palette', 43, 266)
