@@ -1,5 +1,6 @@
 local draw = require 'draw_utils'
 local button = require 'button'
+local unpack = unpack or table.unpack
 
 love.physics.setMeter(1)
 
@@ -187,6 +188,100 @@ local CatmullRomSpline = function (t, pts, index)
   return x, y, index
 end
 
+local particles = function ()
+  local ps = {}
+
+  -- p: {{x, y} * n}
+  local pop = function (p, r, g, b)
+    local n = #p
+    local yMin, yMax = 1e8, -1e8
+    local xCen, yCen = 0, 0
+    for i = 1, n do
+      local x, y = unpack(p[i])
+      yMin = math.min(yMin, y)
+      yMax = math.max(yMax, y)
+      xCen = xCen + x
+      yCen = yCen + y
+    end
+    xCen = xCen / n
+    yCen = yCen / n
+    -- http://alienryderflex.com/polygon_fill/
+    local yStep = math.max(6, (yMax - yMin) / math.ceil((yMax - yMin) / 10))
+    local xDensity = yStep
+    for y = yMin, yMax, yStep do
+      local xs = {}
+      local x1, y1 = unpack(p[n])
+      for i = 1, n do
+        local x0, y0 = unpack(p[i])
+        if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
+          xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
+        end
+        x1, y1 = x0, y0
+      end
+      table.sort(xs)
+      for i = 1, #xs - 1, 2 do
+        if xs[i] >= W then break end
+        if xs[i + 1] >= 0 then
+          local xMin = math.max(0, xs[i])
+          local xMax = math.min(W, xs[i + 1])
+          local count = math.ceil((xMax - xMin) / xDensity)
+          for t = 1, count do
+            local px = xMin + math.random() * (xMax - xMin)
+            local py = y + (math.random() - 0.5) * yStep
+            local vScale = 0.2 + math.random() * 0.2
+            ps[#ps + 1] = {
+              x0 = px, y0 = py,
+              x = px, y = py,
+              vx = (px - xCen) * vScale,
+              vy = (py - yCen) * vScale,
+              r = r, g = g, b = b, a = 1,
+              t = 0, ttl = 120 + math.random() * 120,
+            }
+            -- print(px, py)
+          end
+        end
+      end
+    end
+  end
+
+  local update = function ()
+    local dt = 1 / 240
+    local i = 1
+    while i <= #ps do
+      local p = ps[i]
+      local expProgress = math.exp(-p.t / p.ttl * 6)
+      local alpha = expProgress * (1 - p.t / p.ttl)
+      -- Wow such particles
+      p.x = p.x0 + p.vx * (1 - expProgress)
+      p.y = p.y0 + p.vy * (1 - expProgress) + (p.t / 240) * (p.vy * 4 + (p.t / 240) * 100)
+      p.t = p.t + 1
+      p.a = alpha
+      if p.t >= p.ttl then
+        ps[i] = ps[#ps]
+        ps[#ps] = nil
+      else
+        i = i + 1
+      end
+    end
+  end
+
+  local draw = function ()
+    for i = 1, #ps do
+      love.graphics.setColor(ps[i].r, ps[i].g, ps[i].b, ps[i].a)
+      love.graphics.rectangle('fill',
+        math.floor(ps[i].x + 0.5),
+        math.floor(ps[i].y + 0.5),
+        1, 1)
+    end
+  end
+
+  return {
+    pop = pop,
+    update = update,
+    draw = draw,
+  }
+end
+
 return function ()
   local s = {}
   local W, H = W, H
@@ -246,6 +341,18 @@ return function ()
   local Yc = math.floor(H * 0.47)
   local blitCurrentBubbleOntoCanvas
 
+  local particles = particles()
+  local bubblePolygon = function (Xc, Yc, WcEx, HcEx)
+    local p = {}
+    for i = 1, n do
+      local x0, y0 = bubbles.get_pos(i)
+      x0 = Xc + x0 * dispScale + WcEx
+      y0 = Yc + y0 * dispScale + HcEx
+      p[i] = { x0, y0 }
+    end
+    return p
+  end
+
   s.press = function (x, y)
     if state == STATE_INFLATE then
       inflateStart = sinceState
@@ -296,6 +403,7 @@ return function ()
         if bubbles.check_inside(x1, y1) then
           -- Pop the bubble
           blitCurrentBubbleOntoCanvas()
+          particles.pop(bubblePolygon(Xc, Yc, 0, 0), selPaint[1], selPaint[2], selPaint[3])
           if bubblesRemaining > 0 then
             state, sinceState = STATE_INITIAL, 0
             btnStick.enabled = true
@@ -316,6 +424,7 @@ return function ()
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
     end
+    particles.update()
   end
 
   local Wc, Hc = 160, 180
@@ -382,16 +491,13 @@ return function ()
       -- Clear texture
       tex:mapPixel(function () return 0, 0, 0, 0 end)
       -- Blit polygon onto texture
+      local p = bubblePolygon(Wc / 2, Hc / 2, WcEx, HcEx)
       -- http://alienryderflex.com/polygon_fill/
       for y = 0, Hc + HcEx * 2 - 1 do
         local xs = {}
-        local x1, y1 = bubbles.get_pos(n)
-        x1 = Wc / 2 + x1 * dispScale + WcEx
-        y1 = Hc / 2 + y1 * dispScale + HcEx
+        local x1, y1 = unpack(p[n])
         for i = 1, n do
-          local x0, y0 = bubbles.get_pos(i)
-          x0 = Wc / 2 + x0 * dispScale + WcEx
-          y0 = Hc / 2 + y0 * dispScale + HcEx
+          local x0, y0 = unpack(p[i])
           if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
             xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
           end
@@ -442,6 +548,8 @@ return function ()
     if state == STATE_INFLATE then
       draw.img('stick_large', 98, 155)
     end
+
+    particles.draw()
   end
 
   s.destroy = function ()
