@@ -4,13 +4,13 @@ love.physics.setMeter(1)
 
 local bubbles = function (p)
   local n = #p
-  local scale = 20
+  local scale = 5
 
   local b = {}
   local world = love.physics.newWorld()
   for i = 1, n do
     local body = love.physics.newBody(world, 0, 0, 'dynamic')
-    local shape = love.physics.newCircleShape(1e-6)
+    local shape = love.physics.newCircleShape(1e-4 * scale)
     local fixt = love.physics.newFixture(body, shape)
 
     body:setLinearDamping(0.5)  -- Damp
@@ -28,7 +28,7 @@ local bubbles = function (p)
     local x1, y1 = b1:getPosition()
     local x2, y2 = b2:getPosition()
     local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
-    joint:setDampingRatio(0.4)  -- Keep a lot of oscillations
+    joint:setDampingRatio(10) -- Oscillate less
     joint:setFrequency(3.0)
     joint:setLength(3e-2 * scale)
   end
@@ -45,7 +45,7 @@ local bubbles = function (p)
     return b[i]
   end
 
-  local imp_r = 0.1
+  local imp_r = 0.05
   local imp = function (x, y)
     x = x * scale
     y = y * scale
@@ -61,7 +61,7 @@ local bubbles = function (p)
           local d = math.sqrt(dsq)
           local t = 1 - d / imp_r
           local imp_intensity = 1 - t * t
-          local imp_scale = 0.4 * scale * imp_intensity / d
+          local imp_scale = 0.3 * scale * imp_intensity / d
           b:setLinearVelocity(dx * imp_scale, dy * imp_scale)
           b:setAwake(true)
         end
@@ -74,8 +74,11 @@ local bubbles = function (p)
     world:update(dt)
     local js = world:getJoints()
     for i = 1, #js do
-      local fx, fy = js[i]:getReactionForce(1 / 240)
-      if fx * fx + fy * fy >= 1e-6 then print(i, x, y) end
+      local b1, b2 = js[i]:getBodies()
+      local x1, y1 = b1:getPosition()
+      local x2, y2 = b2:getPosition()
+      local d = math.sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2)
+      -- print(js[i]:getLength(), d)
     end
   end
 
@@ -125,13 +128,19 @@ return function ()
 
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.setLineWidth(3)
+    local x1, y1
+    local x, y = bubbles.get_pos(n)
+    x1 = W / 2 + x * dispScale
+    y1 = H / 2 + y * dispScale
     for i = 1, n do
-      local awake = bubbles.get_body(i):isAwake()
-      love.graphics.setColor(0, 0, 0, awake and 1 or 0.2)
       local x, y = bubbles.get_pos(i)
       local x0 = W / 2 + x * dispScale
       local y0 = H / 2 + y * dispScale
       love.graphics.circle('fill', x0, y0, 2)
+      love.graphics.line(x0, y0, x1, y1)
+      x1, y1 = x0, y0
     end
   end
 
