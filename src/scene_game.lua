@@ -1,49 +1,70 @@
 local draw = require 'draw_utils'
 
-local bubbles = function (n)
-  local p = {}
-  for i = 1, n do p[i] = { x = 0, y = 0, lx = 0, ly = 0 } end
-  p[n + 1] = p[1]
+love.physics.setMeter(1)
 
-  local d_limit = 2e-2
-  local d_limit_sq = d_limit * d_limit
-  local d_scale = 100
-  local tension = function (x0, y0, x1, y1)
-    local dx, dy = x1 - x0, y1 - y0
-    local dsq = dx * dx + dy * dy
-    local d = math.sqrt(dsq)
-    local intensity
-    if dsq < d_limit_sq then
-      -- intensity = 1 * d_limit / d
-      intensity = -(d - d_limit) * d_scale
-    else
-      intensity = (d - d_limit) * d_scale
-    end
-    local scale = intensity / d
-    return dx * scale, dy * scale
+local bubbles = function (p)
+  local n = #p
+  local scale = 20
+
+  local b = {}
+  local world = love.physics.newWorld()
+  for i = 1, n do
+    local body = love.physics.newBody(world, 0, 0, 'dynamic')
+    local shape = love.physics.newCircleShape(1e-6)
+    local fixt = love.physics.newFixture(body, shape)
+
+    body:setLinearDamping(0.5)  -- Damp
+    body:setAngularDamping(1.0) -- Damp a lot
+    fixt:setRestitution(0.9)    -- Bounce a lot
+
+    body:setPosition(p[i][1] * scale, p[i][2] * scale)
+
+    b[i] = body
+  end
+
+  for i = 1, n do
+    local b1 = b[i]
+    local b2 = b[i % n + 1]
+    local x1, y1 = b1:getPosition()
+    local x2, y2 = b2:getPosition()
+    local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
+    joint:setDampingRatio(0.4)  -- Keep a lot of oscillations
+    joint:setFrequency(3.0)
+    joint:setLength(3e-2 * scale)
+  end
+
+  local set_pos = function (i, x, y)
+    b[i]:setPosition(x * scale, y * scale)
+  end
+
+  local get_pos = function (i)
+    local x, y = b[i]:getPosition()
+    return x / scale, y / scale
+  end
+  local get_body = function (i)
+    return b[i]
+  end
+
+  local imp = function (x, y)
+    local i = math.random(n)
+    b[i]:setLinearVelocity(0, 8e0)
+    b[i]:setAwake(true)
   end
 
   local update = function (dt)
-    local xp, yp
-    local x0, y0 = p[n].x, p[n].y
-    local xn, yn = p[1].x, p[1].y
-    for i = 1, n do
-      xp, yp, x0, y0 = x0, y0, xn, yn
-      xn, yn = p[i + 1].x, p[i + 1].y
-      -- Acceleration
-      local axp, ayp = tension(x0, y0, xp, yp)
-      local axn, ayn = tension(x0, y0, xn, yn)
-      local ax, ay = axp + axn, ayp + ayn
-      -- print(ax, ay, axp, ayp, axn, ayn)
-      -- Verlet integration
-      p[i].x = 2 * x0 - p[i].lx + ax * dt * dt
-      p[i].y = 2 * y0 - p[i].ly + ay * dt * dt
-      p[i].lx, p[i].ly = x0, y0
+    world:update(dt)
+    local js = world:getJoints()
+    for i = 1, #js do
+      local fx, fy = js[i]:getReactionForce(1 / 240)
+      if fx * fx + fy * fy >= 1e-6 then print(i, x, y) end
     end
   end
 
   return {
-    p = p,
+    set_pos = set_pos,
+    get_pos = get_pos,
+    get_body = get_body,
+    imp = imp,
     update = update,
   }
 end
@@ -52,16 +73,22 @@ return function ()
   local s = {}
   local W, H = W, H
 
-  local n = 200
-  local bubbles = bubbles(n)
-  local p = bubbles.p
+  local dispScale = W * 0.4
+
+  local n = 100
+  local p = {}
   for i = 1, n do
-    p[i].x = math.cos(i / n * math.pi * 2) * 0.5
-    p[i].y = math.sin(i / n * math.pi * 2) * 0.3
-    p[i].lx, p[i].ly = p[i].x, p[i].y
+    p[i] = {
+      math.cos(i / n * math.pi * 2) * 0.5,
+      math.sin(i / n * math.pi * 2) * 0.3,
+    }
   end
+  local bubbles = bubbles(p)
 
   s.press = function (x, y)
+    local x1 = (x - W / 2) / dispScale
+    local y1 = (y - H / 2) / dispScale
+    bubbles.imp(x1, y1)
   end
 
   s.hover = function (x, y)
@@ -79,10 +106,12 @@ return function ()
 
   s.draw = function ()
     love.graphics.clear(1, 1, 1)
-    love.graphics.setColor(0, 0, 0)
     for i = 1, n do
-      local x0 = W / 2 + p[i].x * (W * 0.4)
-      local y0 = H / 2 + p[i].y * (W * 0.4)
+      local awake = bubbles.get_body(i):isAwake()
+      love.graphics.setColor(0, 0, 0, awake and 1 or 0.2)
+      local x, y = bubbles.get_pos(i)
+      local x0 = W / 2 + x * dispScale
+      local y0 = H / 2 + y * dispScale
       love.graphics.circle('fill', x0, y0, 2)
     end
   end
