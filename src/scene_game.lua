@@ -30,14 +30,19 @@ local bubbles = function (p)
   local fixt = love.physics.newFixture(body_cen, shape)
   body_cen:setMass(10)
 
+  local expected_r
+
   local joints_inflating = {}
-  local set_size = function (expected_r)
+  local set_size = function (r)
+    expected_r = r
     for i = 1, n do
       local x = math.cos(i / n * math.pi * 2) * expected_r
       local y = math.sin(i / n * math.pi * 2) * expected_r
       x = x + (love.math.noise(x*0.6 - 15, y*0.6) - 0.5) * 7e-2 * expected_r
       y = y + (love.math.noise(x*0.6, y*0.6 + 10) - 0.5) * 7e-2 * expected_r
       b[i]:setPosition(x * scale * 0.94, y * scale * 0.94)
+      b[i]:setLinearVelocity(0, 0)
+      b[i]:setAngularVelocity(0)
     end
 
     for i = 1, #joints_inflating do
@@ -136,6 +141,38 @@ local bubbles = function (p)
           return true
         end
       )
+    end
+
+    -- Repulsive force among close points to prevent self-intersection
+    local rep_r = 3.0 * (math.pi * 2 / n * expected_r) * scale
+    -- Scan and find near pairs
+    local p = {}
+    for i = 1, n do
+      p[i] = { i = i, x = b[i]:getX(), y = b[i]:getY() }
+    end
+    table.sort(p, function (a, b) return a.x < b.x end)
+    -- Sliding window
+    local j = 1
+    for i = 1, n do
+      while j < i and p[j].x < p[i].x - rep_r do j = j + 1 end
+      for k = j, i - 1 do
+        local dx = p[i].x - p[k].x
+        local dy = p[i].y - p[k].y
+        local dsq = dx * dx + dy * dy
+        local rep_r_cur = rep_r
+        local indexDiff = math.abs(p[i].i - p[k].i)
+        indexDiff = math.min(indexDiff, n - indexDiff)
+        if indexDiff < 5 then
+          rep_r_cur = rep_r / 5 * indexDiff
+        end
+        if dsq < rep_r_cur * rep_r_cur then
+          local d = math.sqrt(dsq)
+          local intensity = 1 - (d / rep_r_cur) ^ 2
+          local rep_scale = 5e-1 * scale * intensity / d
+          b[p[i].i]:applyForce(dx * rep_scale, dy * rep_scale)
+          b[p[k].i]:applyForce(-dx * rep_scale, -dy * rep_scale)
+        end
+      end
     end
 
     world:update(dt)
