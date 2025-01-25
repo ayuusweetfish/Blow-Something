@@ -49,7 +49,7 @@ local fontSizeFactory = function (path, preload)
     return font[size]
   end
 end
-_G['global_font'] = fontSizeFactory(nil, {28, 36})
+_G['global_font'] = fontSizeFactory('fnt/WenQuanYi_Bitmap_Song_14px.ttf', {28, 36})
 love.graphics.setFont(_G['global_font'](40))
 
 _G['scene_intro'] = require 'scene_intro'

@@ -6,7 +6,6 @@ local networkThread = love.thread.newThread('src/network.lua')
 networkThread:start()
 local chReq = love.thread.getChannel('network-req')
 local chResp = love.thread.getChannel('network-resp')
-chReq:push('123')
 
 love.physics.setMeter(1)
 
@@ -417,6 +416,8 @@ return function ()
     return p
   end
 
+  local recognitionResult
+
   s.press = function (x, y)
     -- Check the buttons first, in case the player changes colour before inflation
     for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
@@ -449,6 +450,8 @@ return function ()
     end
   end
 
+  local texCanvas
+
   s.release = function (x, y)
     if state == STATE_INFLATE and inflateStart then
       print('start painting', sinceState - inflateStart)
@@ -470,9 +473,15 @@ return function ()
           -- Pop the bubble
           blitCurrentBubbleOntoCanvas()
           particles.pop(bubblePolygon(Xc, Yc, 0, 0), selPaint[1], selPaint[2], selPaint[3])
+          -- Encode image and send to server
+          local imageFileData = texCanvas:encode('png')
+          local s = imageFileData:getString()
+          chReq:push(s)
+          -- Move on
           if bubblesRemaining > 0 then
             state, sinceState = STATE_INITIAL, 0
             btnStick.enabled = true
+            recognitionResult = nil
           else
             state, sinceState = STATE_FINAL, 0
           end
@@ -491,7 +500,6 @@ return function ()
       bubbles.update(1 / 240)
     end
     particles.update()
-    local v = chResp:pop() if v then print('resp', v) end
   end
 
   local Wc, Hc = 160, 180
@@ -499,7 +507,7 @@ return function ()
   local tex = love.image.newImageData(Wc + WcEx * 2, Hc + HcEx * 2, 'rgba8')
   local img = love.graphics.newImage(tex)
 
-  local texCanvas = love.image.newImageData(Wc, Hc, 'rgba8')
+  texCanvas = love.image.newImageData(Wc, Hc, 'rgba8')
   local imgCanvas = love.graphics.newImage(texCanvas)
 
   local drawBubbleOutline = function (tex, WcEx, HcEx, paintR, paintG, paintB)
@@ -636,6 +644,15 @@ return function ()
       local frame = math.floor(sinceState / 20) + 1
       love.graphics.setColor(1, 1, 1)
       love.graphics.draw(confetti, confettiQuads[frame], 0, 0, 0, W / (confettiW / 5))
+    end
+
+    local resp = chResp:pop()
+    if resp ~= nil then
+      recognitionResult = resp
+    end
+    if recognitionResult ~= nil then
+      love.graphics.setColor(0, 0, 0)
+      love.graphics.print(recognitionResult, _G['global_font'](14), 10, 160)
     end
   end
 

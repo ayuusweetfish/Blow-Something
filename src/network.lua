@@ -6,16 +6,14 @@ local ltn12 = require 'ltn12'
 
 while true do
   local msg = chReq:demand()  -- Blocking
-  print('req', msg)
 
   local resp = {}
   http.request {
-    url = 'http://127.0.0.1:25126/hi',
+    url = 'http://127.0.0.1:25126/look',
     method = 'POST',
     headers = { ['Content-Length'] = #msg },
     source = ltn12.source.string(msg),
     sink = ltn12.sink.table(resp),
   }
-  print(#resp, table.concat(resp))
-  chResp:supply(table.concat(resp))
+  chResp:push(table.concat(resp))
 end
