@@ -115,19 +115,17 @@ local bubbles = function (p)
 
   local px, py = nil, nil
   local p_start_inside = false
-  local p_effective = false
+  local plx, ply = nil, nil -- Last position of effect
   local set_ptr = function (x, y)
     if px == nil then
       p_start_inside = check_inside(x, y)
-      p_effective = true
-    else
-      p_effective = (check_inside(x, y) == p_start_inside)
+      plx, ply = x * scale, y * scale
     end
     px, py = x * scale, y * scale
   end
   local rel_ptr = function ()
     px, py = nil, nil
-    p_effective = false
+    plx, ply = nil, nil
   end
   local get_ptr = function ()
     if px then return px / scale, py / scale, imp_r end
@@ -135,25 +133,35 @@ local bubbles = function (p)
   end
 
   local update = function (dt)
-    if p_effective then
-      world:queryBoundingBox(
-        px - imp_r * scale, py - imp_r * scale,
-        px + imp_r * scale, py + imp_r * scale,
-        function (fixt)
-          local b = fixt:getBody()
-          local x1, y1 = b:getPosition()
-          local dx, dy = (x1 - px) / scale, (y1 - py) / scale
-          local dsq = dx * dx + dy * dy
-          if dsq < imp_r * imp_r then
-            local d = math.sqrt(dsq)
-            local t = 1 - d / imp_r
-            local imp_intensity = 1 - t * t
-            local imp_scale = 2.5 * scale * imp_intensity / d
-            b:applyForce(dx * imp_scale, dy * imp_scale)
+    if px ~= nil then
+      local effective = (check_inside(px / scale, py / scale) == p_start_inside)
+      if effective then
+        plx, ply = px, py
+      else
+        -- Nudge effective position towards pointer
+        -- TODO if time allows: if `(plx, ply)` is valid, nudge it towards pointer;
+        -- otherwise, nudge it against
+      end
+      if effective then
+        world:queryBoundingBox(
+          plx - imp_r * scale, ply - imp_r * scale,
+          plx + imp_r * scale, ply + imp_r * scale,
+          function (fixt)
+            local b = fixt:getBody()
+            local x1, y1 = b:getPosition()
+            local dx, dy = (x1 - plx) / scale, (y1 - ply) / scale
+            local dsq = dx * dx + dy * dy
+            if dsq < imp_r * imp_r then
+              local d = math.sqrt(dsq)
+              local t = 1 - d / imp_r
+              local imp_intensity = 1 - t * t
+              local imp_scale = 2.5 * scale * imp_intensity / d
+              b:applyForce(dx * imp_scale, dy * imp_scale)
+            end
+            return true
           end
-          return true
-        end
-      )
+        )
+      end
     end
 
     -- Repulsive force among close points to prevent self-intersection
