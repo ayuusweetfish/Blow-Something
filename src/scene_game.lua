@@ -191,6 +191,9 @@ return function ()
   local infateStart = nil
   local bubbleSize = nil
 
+  local Xc = W * 0.5
+  local Yc = H * 0.46
+
   s.press = function (x, y)
     if state == STATE_INFLATE then
       infateStart = sinceState
@@ -198,8 +201,8 @@ return function ()
     end
 
     for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
-    local x1 = (x - W / 2) / dispScale
-    local y1 = (y - H / 2) / dispScale
+    local x1 = (x - Xc) / dispScale
+    local y1 = (y - Yc) / dispScale
     bubbles.set_ptr(x1, y1)
   end
 
@@ -208,8 +211,8 @@ return function ()
 
   s.move = function (x, y)
     for i = 1, #buttons do if buttons[i].move(x, y) then return true end end
-    local x1 = (x - W / 2) / dispScale
-    local y1 = (y - H / 2) / dispScale
+    local x1 = (x - Xc) / dispScale
+    local y1 = (y - Yc) / dispScale
     bubbles.set_ptr(x1, y1)
   end
 
@@ -276,8 +279,8 @@ return function ()
       love.graphics.setBlendMode('alpha', 'premultiplied')
       love.graphics.setColor(1, 1, 1)
       love.graphics.draw(img,
-        math.floor(W / 2 - Wc / 2),
-        math.floor(H * 0.46 - Hc / 2),
+        math.floor(Xc - Wc / 2),
+        math.floor(Yc - Hc / 2),
         0, dispScale * 2 / Wc)
       love.graphics.setBlendMode('alpha')
 
@@ -285,8 +288,8 @@ return function ()
       if px then
         love.graphics.setColor(1, 0.7, 0.7, 0.7)
         love.graphics.circle('fill',
-          W / 2 + px * dispScale,
-          H / 2 + py * dispScale,
+          Xc + px * dispScale,
+          Yc + py * dispScale,
           pr * dispScale)
       end
     end
