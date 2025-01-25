@@ -180,7 +180,7 @@ return function ()
     bubbles.update(1 / 240)
   end
 
-  local Wc, Hc = 160, 160
+  local Wc, Hc = 160, 200
   local tex = love.image.newImageData(Wc, Hc, 'rgba8')
   local img = love.graphics.newImage(tex)
 
@@ -221,24 +221,11 @@ return function ()
     img:replacePixels(tex)
     love.graphics.setBlendMode('alpha', 'premultiplied')
     love.graphics.setColor(1, 1, 1)
-    love.graphics.draw(img, W / 2, H / 2, 0,
-      dispScale * 2 / Wc, dispScale * 2 / Hc, Wc / 2, Hc / 2)
-
+    love.graphics.draw(img,
+      math.floor(W / 2 - Wc / 2),
+      math.floor(H * 0.46 - Hc / 2),
+      0, dispScale * 2 / Wc)
     love.graphics.setBlendMode('alpha')
-    if false then
-      love.graphics.setColor(0.4, 0.4, 0)
-      local x1, y1
-      local x, y = bubbles.get_pos(n)
-      x1 = W / 2 + x * dispScale
-      y1 = H / 2 + y * dispScale
-      for i = 1, n do
-        local x, y = bubbles.get_pos(i)
-        local x0 = W / 2 + x * dispScale
-        local y0 = H / 2 + y * dispScale
-        love.graphics.circle('fill', x0, y0, 2)
-        x1, y1 = x0, y0
-      end
-    end
 
     local px, py, pr = bubbles.get_ptr()
     if px then
