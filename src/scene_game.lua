@@ -490,7 +490,10 @@ return function ()
     end
   end
 
+  local T = 0
+
   s.update = function ()
+    T = T + 1
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
       local t = (sinceState - inflateStart) / 240
@@ -624,9 +627,16 @@ return function ()
       end
     end
 
+    -- More screen elements
     love.graphics.setColor(1, 1, 1)
+
     draw.img('top', 0, 0)
-    draw.img('cat', 10, 198)
+
+    local catTailFrame = math.floor(T / 30) % 8 + 1
+    draw.img('cat_tail/' .. tostring(catTailFrame), 10 - 32, 198)
+    local catBodyFrame = math.floor(T / 30) % 4 + 1
+    draw.img('cat_idle/' .. tostring(catBodyFrame), 10 - 19, 198 - 20)
+
     for i = 1, bubblesRemaining do
       draw.img('stick_small', 128 - (i - 1) * 2, 217)
     end
