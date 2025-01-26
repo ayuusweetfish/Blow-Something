@@ -85,6 +85,10 @@
               method: 'POST',
               body: payload.buffer,
             }).then((resp) => {
+              if (resp.status !== 200) {
+                FS.writeFile(savePath, '<猫脑过载>');
+                return;
+              }
               resp.text().then((text) => {
                 FS.writeFile(savePath, text);
               }).catch((e) => {
