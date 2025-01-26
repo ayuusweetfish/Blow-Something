@@ -402,9 +402,11 @@ return function ()
   local bubbles = bubbles(p)
 
   local bubblesRemaining = 3
+  local texCanvas, imgCanvas
 
   local targetWord, targetWordText
   local setTargetWord = function (word)
+    word = '圆圈'
     targetWord = word
     targetWordText = love.graphics.newText(_G['global_font'](14), word)
   end
@@ -423,6 +425,15 @@ return function ()
   local buttons = {}
   local btnStick
   btnStick = button({ x = 131, y = 197, w = 18, h = 79 }, function ()
+    -- Restart from last ended game
+    if state == STATE_FINAL then
+      -- Clear textures
+      texCanvas:mapPixel(function () return 0, 0, 0, 0 end)
+      imgCanvas:replacePixels(texCanvas)
+      -- Reset target word (will be drawn after the first bubble is released)
+      targetWord, targetWordText = nil, nil
+    end
+
     print('start inflating')
     bubblesRemaining = bubblesRemaining - 1
     state, sinceState = STATE_INFLATE, 0
@@ -518,8 +529,6 @@ return function ()
     end
   end
 
-  local texCanvas
-
   local catThinkFrame = -1
   local catAnswerSeq, catAnswerFrame = -1, -1
   local catAnswerSpeechBubble = 1
@@ -561,11 +570,9 @@ return function ()
           -- Thinking
           catThinkFrame = 1
           -- Move on
+          state, sinceState = STATE_INITIAL, 0
           if bubblesRemaining > 0 then
-            state, sinceState = STATE_INITIAL, 0
             btnStick.enabled = true
-          else
-            state, sinceState = STATE_FINAL, 0
           end
         end
       end
@@ -626,6 +633,11 @@ return function ()
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
     end
+    if state == STATE_FINAL and sinceState >= 720 then
+      -- Allow restart
+      bubblesRemaining = 3
+      btnStick.enabled = true
+    end
 
     particles.update()
 
@@ -635,13 +647,18 @@ return function ()
       recognitionResultText = love.graphics.newText(_G['global_font'](14), resp)
       catThinkFrame = -1
       -- Is correct?
-      if state == STATE_FINAL then
+      if recognitionResult == targetWord then
         catBingoFrame = 1
         catBingoSince = 0
         rewardCount = rewardCount + 1
+        state, sinceState = STATE_FINAL, 0
       else
         catAnswerSeq = math.random(2)
         catAnswerFrame = 1
+        if state == STATE_INITIAL and bubblesRemaining == 0 then
+          -- Finalise, regardless
+          state, sinceState = STATE_FINAL, 0
+        end
       end
       catAnswerSpeechBubble = math.random(#speechBubbles)
     end
@@ -657,7 +674,7 @@ return function ()
   local img = love.graphics.newImage(tex)
 
   texCanvas = love.image.newImageData(Wc, Hc, 'rgba8')
-  local imgCanvas = love.graphics.newImage(texCanvas)
+  imgCanvas = love.graphics.newImage(texCanvas)
 
   local drawBubbleOutline = function (tex, WcEx, HcEx, paintR, paintG, paintB)
     local pts = {}
