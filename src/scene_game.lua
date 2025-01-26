@@ -412,7 +412,7 @@ return function ()
     {3, 276},
     {0, 224},
   }
-  local rewardCount = 10
+  local rewardCount = 0
 
   local Xc = W * 0.5
   local Yc = math.floor(H * 0.47)
@@ -587,6 +587,10 @@ return function ()
         catAnswerFrame = 1
       end
     end
+  end
+
+  s.key = function (key)
+    if key == 'space' then rewardCount = rewardCount + 1 end
   end
 
   local Wc, Hc = 160, 180

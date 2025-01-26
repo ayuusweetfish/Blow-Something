@@ -146,6 +146,7 @@ function love.draw()
 end
 
 function love.keypressed(key)
+  if curScene.key then curScene.key(key) end
   if true then return end
   if key == 'lshift' then
     if not isMobile and not isWeb then
