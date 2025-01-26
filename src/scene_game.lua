@@ -657,6 +657,7 @@ return function ()
           bubblesRemaining = 0
           btnStick.enabled = false
           state, sinceState = STATE_FINAL, 0
+          audio.sfx('bingo')
         elseif catAnswerFrame >= 24 and recognitionResult ~= targetWord then
           catAnswerSeq, catAnswerFrame = -1, -1
           if state == STATE_INITIAL and bubblesRemaining == 0 then
@@ -703,6 +704,8 @@ return function ()
       catAnswerSeq = math.random(2)
       catAnswerFrame = 1
       catAnswerSpeechBubble = math.random(#speechBubbles)
+
+      audio.sfx('answer')
     end
   end
 
@@ -788,7 +791,7 @@ return function ()
       -- Bubble
       local bubbleOpacity = 0.7
       if state == STATE_PAINT then
-        bubbleOpacity = 0.3 + 0.4 * math.exp(-sinceState / 960)
+        bubbleOpacity = 0.5 + 0.2 * math.exp(-sinceState / 960)
       end
       -- Clear texture
       tex:mapPixel(function () return 0, 0, 0, 0 end)
@@ -810,7 +813,7 @@ return function ()
           if xs[i] >= Wc + WcEx * 2 then break end
           if xs[i + 1] >= 0 then
             for x = math.max(0, math.floor(xs[i])), math.min(Wc + WcEx * 2 - 1, math.floor(xs[i + 1])) do
-              local a = bubbleOpacity * (0.7 + 0.3 * love.math.noise(x / 50, T / 360, y / 50))
+              local a = bubbleOpacity * (0.5 + 0.5 * love.math.noise(x / 50, T / 360, y / 50))
               tex:setPixel(x, y, paintR, paintG, paintB, a)
             end
           end
@@ -917,10 +920,10 @@ return function ()
       local t = math.min(1, catAnswerFrame / 4)
       local w = recognitionResultText:getWidth() * t + 16
       love.graphics.setColor(1, 1, 1)
-      speechBubbles[catAnswerSpeechBubble].draw(10, 158, math.floor(w + 0.5), 24)
+      speechBubbles[catAnswerSpeechBubble].draw(10, 164, math.floor(w + 0.5), 24)
       if catAnswerFrame >= 6 then
         love.graphics.setColor(0, 0, 0)
-        love.graphics.draw(recognitionResultText, 18, 163)
+        love.graphics.draw(recognitionResultText, 18, 169)
       end
     end
   end
