@@ -665,8 +665,8 @@ return function ()
 
     -- Canvas background
     draw.img('blackboard', 15, 59)
-    love.graphics.setColor(1, 0.96, 0.92, 0.8)
-    love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
+    -- love.graphics.setColor(1, 0.96, 0.92, 0.8)
+    -- love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
 
     -- Previous bubbles
     love.graphics.setBlendMode('alpha')
@@ -680,9 +680,9 @@ return function ()
 
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       -- Bubble
-      local bubbleOpacity = 0.5
+      local bubbleOpacity = 0.7
       if state == STATE_PAINT then
-        bubbleOpacity = 0.2 + 0.3 * math.exp(-sinceState / 960)
+        bubbleOpacity = 0.3 + 0.4 * math.exp(-sinceState / 960)
       end
       -- Clear texture
       tex:mapPixel(function () return 0, 0, 0, 0 end)
@@ -704,7 +704,8 @@ return function ()
           if xs[i] >= Wc + WcEx * 2 then break end
           if xs[i + 1] >= 0 then
             for x = math.max(0, math.floor(xs[i])), math.min(Wc + WcEx * 2 - 1, math.floor(xs[i + 1])) do
-              tex:setPixel(x, y, paintR, paintG, paintB, bubbleOpacity)
+              local a = bubbleOpacity * (0.7 + 0.3 * love.math.noise(x / 50, T / 360, y / 50))
+              tex:setPixel(x, y, paintR, paintG, paintB, a)
             end
           end
         end
