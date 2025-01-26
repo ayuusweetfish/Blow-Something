@@ -61,6 +61,9 @@ local bgm, bgm_update = audio.loop(
 bgm:setVolume(1)
 bgm:play()
 
+require 'draw_utils'  -- Load
+print('*finish')
+
 _G['scene_intro'] = require 'scene_intro'
 _G['scene_game'] = require 'scene_game'
 

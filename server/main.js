@@ -28,7 +28,11 @@ const serveReq = async (req) => {
   const url = new URL(req.url)
   if (req.method === 'GET' && url.pathname.match(/^\/[a-zA-Z0-9_\-.]*$/)) {
     const file = (url.pathname === '/' ? '/index.html' : url.pathname)
-    return serveFile(req, '../release/Game-Name-web' + file)
+    const resp = await serveFile(req, '../release/Game-Name-web' + file)
+    resp.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
+    resp.headers.set('Cross-Origin-Embedder-Policy', 'require-corp')
+    resp.headers.set('Access-Control-Allow-Origin', '*')
+    return resp
   }
   if (req.method === 'POST' && url.pathname === '/hi') {
     const payload = await req.arrayBuffer()

@@ -73,6 +73,21 @@
         arguments: ["./game.love"],
         INITIAL_MEMORY: 134217728,
         print: function (text) {
+          if (text[0] === '^') {
+            text = text.substring(1).trim();
+            var payload = new Uint8Array(text.length / 2);
+            for (var i = 0; i < payload.length; i++)
+              payload[i] = parseInt(text.substring(i * 2, i * 2 + 2), 16)
+            fetch(window.location.origin + '/look', {
+              method: 'POST',
+              body: payload.buffer,
+            }).then((resp) => {
+              resp.text().then((text) => {
+                console.log(text);
+              });
+            });
+            return;
+          }
           if (loadingText !== null) {
             if (text !== '*finish') {
               loadingText.innerText = 'Loading assets... (' + text + ')';

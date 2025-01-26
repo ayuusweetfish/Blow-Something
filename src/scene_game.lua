@@ -3,10 +3,25 @@ local button = require 'button'
 local audio = require 'audio'
 local unpack = unpack or table.unpack
 
-local networkThread = love.thread.newThread('src/network.lua')
-networkThread:start()
-local chReq = love.thread.getChannel('network-req')
-local chResp = love.thread.getChannel('network-resp')
+local enqueueRequest, fetchResponse
+if love.system.getOS() == 'Web' then
+  enqueueRequest = function (s)
+    local encoded = {'^'}
+    for i = 1, #s do
+      encoded[#encoded + 1] = string.format('%02x', string.byte(s, i))
+    end
+    print(table.concat(encoded))
+  end
+  fetchResponse = function () return nil end
+else
+  -- Local run
+  local networkThread = love.thread.newThread('src/network.lua')
+  networkThread:start()
+  local chReq = love.thread.getChannel('network-req')
+  local chResp = love.thread.getChannel('network-resp')
+  enqueueRequest = function (s) chReq:push(s) end
+  fetchResponse = function () return chResp:pop() end
+end
 
 love.physics.setMeter(1)
 
@@ -566,7 +581,7 @@ return function ()
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
-          chReq:push(s)
+          enqueueRequest(s)
           -- Thinking
           catThinkFrame = 1
           -- Move on
@@ -657,7 +672,7 @@ return function ()
 
     particles.update()
 
-    local resp = chResp:pop()
+    local resp = fetchResponse()
     if resp ~= nil then
       recognitionResult = resp
       recognitionResultText = love.graphics.newText(_G['global_font'](14), resp)
