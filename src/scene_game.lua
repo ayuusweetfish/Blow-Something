@@ -400,6 +400,20 @@ return function ()
   paletteButton(85, 286, 20, 21, .62, .93, .98)
   paletteButton(106, 269, 17, 38, .5, .5, .5)
 
+  local rewardPositions = {
+    {17, 300},
+    {106, 285},
+    {132, 279},
+    {159, 227},
+    {150, 291},
+    {131, 297},
+    {16, 278},
+    {108, 268},
+    {3, 276},
+    {0, 224},
+  }
+  local rewardCount = 10
+
   local Xc = W * 0.5
   local Yc = math.floor(H * 0.47)
   local blitCurrentBubbleOntoCanvas
@@ -567,6 +581,7 @@ return function ()
       if state == STATE_FINAL then
         catBingoFrame = 1
         catBingoSince = 0
+        rewardCount = rewardCount + 1
       else
         catAnswerSeq = math.random(2)
         catAnswerFrame = 1
@@ -741,6 +756,16 @@ return function ()
     draw.img('bottle', 128, 217)
     draw.img('palette', 43, 266)
     draw.img('camera', 143, 263)
+
+    -- Rewards
+    -- Fish task goes behind others
+    if rewardCount >= 10 then
+      local frame = math.floor(T / 60) % 10 + 1
+      draw.img('rewards/10_' .. tostring(frame), rewardPositions[10][1], rewardPositions[10][2])
+    end
+    for i = 1, math.min(9, rewardCount) do
+      draw.img('rewards/' .. tostring(i), rewardPositions[i][1], rewardPositions[i][2])
+    end
 
     if state == STATE_INFLATE then
       draw.img('stick_large', 98, 155)
