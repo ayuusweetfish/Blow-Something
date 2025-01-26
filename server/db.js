@@ -33,3 +33,16 @@ export const logGame = async (target, image, recognized) => {
   stmt(`INSERT INTO game_record VALUES (?, ?, ?, ?)`)
     .run(image, target, recognized, Date.now())
 }
+
+export const recentSuccessfulGames = async () => {
+  const values =
+    stmt(`SELECT image, target, recognized FROM game_record WHERE target = recognized ORDER BY rowid DESC LIMIT 30`)
+      .values()
+  return values
+}
+export const recentGames = async () => {
+  const values =
+    stmt(`SELECT image, target, recognized FROM game_record ORDER BY rowid DESC LIMIT 30`)
+      .values()
+  return values
+}

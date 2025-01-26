@@ -2,6 +2,7 @@ import * as db from './db.js'
 import * as llm from './llm.js'
 
 import { serveFile } from 'jsr:@std/http/file-server'
+import { encodeBase64 } from 'jsr:@std/encoding/base64'
 import sharp from 'npm:sharp@0.33.5'  // Ignore Deno's warning about NPM lifecycle scripts
 
 class ErrorHttpCoded extends Error {
@@ -26,6 +27,25 @@ const extractParams = (payload, keys) => {
 
 const serveReq = async (req) => {
   const url = new URL(req.url)
+  if (req.method === 'GET' && (url.pathname === '/log' || url.pathname === '/log/bingo')) {
+    const games = (url.pathname === '/log/bingo') ? (await db.recentSuccessfulGames()) : (await db.recentGames())
+    const html = `
+<!DOCTYPE html>
+<html><head>
+  <style>
+  td { padding: 0 3em; text-align: center; }
+  img { height: 100px; }
+  .bingo { background: #e0ffe0; }
+  </style>
+</head><body>
+<table>
+<tr><th></th><th>目标</th><th>猜</th></tr>
+${games.map(([image, target, recognized]) => `<tr class='${target === recognized ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${target}</td><td>${recognized}</td></tr>`).join('\n')}
+</table>
+</body></html>
+`
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  }
   if (req.method === 'GET' && url.pathname.match(/^\/[a-zA-Z0-9_\-.]*$/)) {
     const file = (url.pathname === '/' ? '/index.html' : url.pathname)
     const resp = await serveFile(req, 'Blow-Something-web/' + file)
