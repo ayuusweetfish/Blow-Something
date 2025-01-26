@@ -406,7 +406,7 @@ return function ()
 
   local targetWord, targetWordText
   local setTargetWord = function (word)
-    word = '圆圈'
+    -- word = '圆圈'
     targetWord = word
     targetWordText = love.graphics.newText(_G['global_font'](14), word)
   end
@@ -607,8 +607,22 @@ return function ()
       -- Answering
       if catAnswerFrame > 0 then
         catAnswerFrame = catAnswerFrame + 1
-        if catAnswerFrame > 24 then
+
+        -- Is correct?
+        if catAnswerFrame >= 12 and recognitionResult == targetWord then
           catAnswerSeq, catAnswerFrame = -1, -1
+          catBingoFrame = 1
+          catBingoSince = 0
+          rewardCount = rewardCount + 1
+          bubblesRemaining = 0
+          btnStick.enabled = false
+          state, sinceState = STATE_FINAL, 0
+        elseif catAnswerFrame >= 24 and recognitionResult ~= targetWord then
+          catAnswerSeq, catAnswerFrame = -1, -1
+          if state == STATE_INITIAL and bubblesRemaining == 0 then
+            -- Finalise, regardless
+            state, sinceState = STATE_FINAL, 0
+          end
         end
       end
       -- Bingo
@@ -646,20 +660,8 @@ return function ()
       recognitionResult = resp
       recognitionResultText = love.graphics.newText(_G['global_font'](14), resp)
       catThinkFrame = -1
-      -- Is correct?
-      if recognitionResult == targetWord then
-        catBingoFrame = 1
-        catBingoSince = 0
-        rewardCount = rewardCount + 1
-        state, sinceState = STATE_FINAL, 0
-      else
-        catAnswerSeq = math.random(2)
-        catAnswerFrame = 1
-        if state == STATE_INITIAL and bubblesRemaining == 0 then
-          -- Finalise, regardless
-          state, sinceState = STATE_FINAL, 0
-        end
-      end
+      catAnswerSeq = math.random(2)
+      catAnswerFrame = 1
       catAnswerSpeechBubble = math.random(#speechBubbles)
     end
   end
@@ -872,7 +874,7 @@ return function ()
 
     if catAnswerFrame >= 0 and recognitionResult ~= nil then
       local t = math.min(1, catAnswerFrame / 4)
-      local w = recognitionResultText:getWidth() * t + 14
+      local w = recognitionResultText:getWidth() * t + 16
       love.graphics.setColor(1, 1, 1)
       speechBubbles[catAnswerSpeechBubble].draw(10, 158, math.floor(w + 0.5), 24)
       if catAnswerFrame >= 6 then
