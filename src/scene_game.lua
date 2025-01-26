@@ -668,6 +668,7 @@ return function ()
 
   s.key = function (key)
     if key == 'space' then rewardCount = rewardCount + 1 end
+    if key == '1' then setTargetWord(targetWords[math.random(#targetWords)]) end
   end
 
   local Wc, Hc = 144, 180
