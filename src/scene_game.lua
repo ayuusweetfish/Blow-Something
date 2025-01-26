@@ -457,10 +457,16 @@ return function ()
   local catBingoFrame = -1
   local catBingoSince = -1  -- Record ticks for differently paced animations, see below
 
+  local slotPullSince = -1
+
   s.release = function (x, y)
     if state == STATE_INFLATE and inflateStart then
       print('start painting', sinceState - inflateStart)
       state, sinceState = STATE_PAINT, 0
+      -- Pull the slot at the first bubble release
+      if bubblesRemaining == 2 then
+        slotPullSince = 0
+      end
     end
 
     for i = 1, #buttons do if buttons[i].release(x, y) then return true end end
@@ -537,6 +543,10 @@ return function ()
       end
     end
     if catBingoSince >= 0 then catBingoSince = catBingoSince + 1 end
+    if slotPullSince >= 0 then
+      slotPullSince = slotPullSince + 1
+      if slotPullSince >= 480 then slotPullSince = -1 end
+    end
 
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
@@ -615,9 +625,12 @@ return function ()
     love.graphics.clear(1, 1, 1)
 
     love.graphics.setColor(1, 1, 1)
-    draw.img('background', W / 2, 267 + 10, W, nil, 0.5, 1)
-    love.graphics.setColor(0.81, 0.79, 0.76)
-    love.graphics.rectangle('fill', 0, 267, W, H)
+    local backgroundFrame = 0
+    if catBingoSince >= 0 then
+      backgroundFrame = 1 + math.floor(catBingoSince / 30)
+      if backgroundFrame >= 8 then backgroundFrame = 0 end
+    end
+    draw.img('background/' .. tostring(backgroundFrame), 0, 32)
 
     -- Canvas background
     love.graphics.setColor(1, 0.96, 0.92)
@@ -690,6 +703,13 @@ return function ()
     love.graphics.setColor(1, 1, 1)
 
     draw.img('top', 0, 0)
+    local slotFrame = 1
+    if slotPullSince >= 0 then
+      local t = slotPullSince / 80
+      local n = math.max(0, math.min(1, t, 5 - t))
+      slotFrame = (n >= 1 and 3 or (n > 0 and 2 or 1))
+    end
+    draw.img('slot_' .. tostring(slotFrame), 52, 10)
 
     local drawTail = function ()
       draw.img('cat_tail/' .. tostring(catTailFrame), 10 - 32, 198)
