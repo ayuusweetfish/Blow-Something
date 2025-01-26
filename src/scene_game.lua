@@ -453,6 +453,8 @@ return function ()
   local texCanvas
 
   local catThinkFrame = -1
+  local catAnswerSeq, catAnswerFrame = -1, -1
+  local catBingoSince = -1  -- Record ticks for differently paced animations, see below
 
   s.release = function (x, y)
     if state == STATE_INFLATE and inflateStart then
@@ -514,11 +516,19 @@ return function ()
         end
       end
 
-      -- Loading
+      -- Thinking
       if catThinkFrame > 0 then
         catThinkFrame = catThinkFrame % 10 + 1
       end
+      -- Answering
+      if catAnswerFrame > 0 then
+        catAnswerFrame = catAnswerFrame + 1
+        if catAnswerFrame >= 24 then
+          catAnswerSeq, catAnswerFrame = -1, -1
+        end
+      end
     end
+    if catBingoSince >= 0 then catBingoSince = catBingoSince + 1 end
 
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
@@ -535,6 +545,13 @@ return function ()
     if resp ~= nil then
       recognitionResult = resp
       catThinkFrame = -1
+      -- Is correct?
+      if state == STATE_FINAL then
+        catBingoSince = 0
+      else
+        catAnswerSeq = math.random(2)
+        catAnswerFrame = 1
+      end
     end
   end
 
@@ -665,10 +682,25 @@ return function ()
 
     draw.img('top', 0, 0)
 
-    draw.img('cat_tail/' .. tostring(catTailFrame), 10 - 32, 198)
+    local drawTail = function ()
+      draw.img('cat_tail/' .. tostring(catTailFrame), 10 - 32, 198)
+    end
     if catThinkFrame > 0 then
+      drawTail()
       draw.img('cat_think/' .. tostring(catThinkFrame), 10 - 19, 198 - 20)
+    elseif catAnswerFrame > 0 then
+      drawTail()
+      local mappedFrame = math.max(1, math.min(3, catAnswerFrame, 25 - catAnswerFrame))
+      draw.img('cat_answ/' .. tostring(catAnswerSeq) .. '_' ..
+        tostring(mappedFrame), 10 - 19, 198 - 20)
+    elseif catBingoSince > 0 then
+      local frame = math.min(10, math.min(math.floor(catBingoSince / 30) + 1))
+      if frame <= 9 then
+        draw.img('cat_bingo/' .. tostring(frame), 10 - 19, 198 - 20)
+        -- Otherwise, empty frame
+      end
     else
+      drawTail()
       local catBodyFrame = math.floor(T / 30) % 4 + 1
       draw.img('cat_idle/' .. tostring(catBodyFrame), 10 - 19, 198 - 20)
     end
@@ -686,8 +718,8 @@ return function ()
 
     particles.draw()
 
-    if state == STATE_FINAL and sinceState < 400 then
-      local frame = math.floor(sinceState / 20) + 1
+    if catBingoSince >= 0 and catBingoSince < 400 then
+      local frame = math.floor(catBingoSince / 20) + 1
       love.graphics.setColor(1, 1, 1)
       love.graphics.draw(confetti, confettiQuads[frame], 0, 0, 0, W / (confettiW / 5))
     end
