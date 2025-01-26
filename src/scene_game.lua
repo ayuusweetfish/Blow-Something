@@ -345,6 +345,11 @@ local particles = function ()
   }
 end
 
+local targetWords = {
+  '大象', '蘑菇', '狗', '太阳', '月亮', '红绿灯',
+  '苹果', '橘子', '水母', '树', '房子', '水滴',
+}
+
 return function ()
   local s = {}
   local W, H = W, H
@@ -363,6 +368,12 @@ return function ()
 
   local bubblesRemaining = 3
 
+  local targetWord, targetWordText
+  local setTargetWord = function (word)
+    targetWord = word
+    targetWordText = love.graphics.newText(_G['global_font'](14), word)
+  end
+
   local STATE_INITIAL = 0
   local STATE_INFLATE = 1
   local STATE_PAINT = 2
@@ -376,7 +387,7 @@ return function ()
 
   local buttons = {}
   local btnStick
-  btnStick = button({ x = 128, y = 217, w = 16, h = 58 }, function ()
+  btnStick = button({ x = 131, y = 197, w = 18, h = 79 }, function ()
     print('start inflating')
     bubblesRemaining = bubblesRemaining - 1
     state, sinceState = STATE_INFLATE, 0
@@ -480,6 +491,7 @@ return function ()
       -- Pull the slot at the first bubble release
       if bubblesRemaining == 2 then
         slotPullSince = 0
+        setTargetWord(targetWords[math.random(#targetWords)])
       end
     end
 
@@ -559,7 +571,7 @@ return function ()
     if catBingoSince >= 0 then catBingoSince = catBingoSince + 1 end
     if slotPullSince >= 0 then
       slotPullSince = slotPullSince + 1
-      if slotPullSince >= 480 then slotPullSince = -1 end
+      if slotPullSince >= 720 then slotPullSince = -1 end
     end
 
     sinceState = sinceState + 1
@@ -731,6 +743,16 @@ return function ()
     end
     draw.img('slot_' .. tostring(slotFrame), 52, 10)
 
+    if targetWordText then
+      local progress = 1
+      if slotPullSince >= 0 then
+        progress = math.max(0, math.min(1, (slotPullSince - 480) / 40))
+      end
+      love.graphics.setColor(0.53, 0.25, 0.36, progress)
+      love.graphics.draw(targetWordText, math.floor(88 - targetWordText:getWidth() / 2), 19)
+    end
+
+    love.graphics.setColor(1, 1, 1)
     local drawTail = function ()
       draw.img('cat_tail/' .. tostring(catTailFrame), 10 - 32, 198)
     end
