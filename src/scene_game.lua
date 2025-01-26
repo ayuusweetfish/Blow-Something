@@ -392,12 +392,12 @@ return function ()
       selPaint = { r, g, b }
     end)
   end
-  paletteButton(46, 269, 17, 16, 1, .19, .30)
-  paletteButton(64, 269, 20, 16, 1, .60, .14)
-  paletteButton(85, 269, 20, 16, .72, .67, .25)
-  paletteButton(46, 286, 17, 21, .58, .60, .92)
-  paletteButton(64, 286, 20, 21, 1, .20, .81)
-  paletteButton(85, 286, 20, 21, .62, .93, .98)
+  paletteButton(45, 266, 18, 17, 1, .19, .30)
+  paletteButton(65, 266, 21, 17, 1, .60, .14)
+  paletteButton(87, 266, 22, 17, .72, .67, .25)
+  paletteButton(45, 284, 18, 23, .58, .60, .92)
+  paletteButton(65, 284, 21, 23, 1, .20, .81)
+  paletteButton(87, 284, 22, 23, .62, .93, .98)
   paletteButton(106, 269, 17, 38, .5, .5, .5)
 
   local rewardPositions = {
@@ -755,10 +755,10 @@ return function ()
     end
 
     for i = 1, bubblesRemaining do
-      draw.img('stick_small', 128 - (i - 1) * 2, 217)
+      draw.img('stick_small', 132 + (i - 1) * 2, 198)
     end
-    draw.img('bottle', 128, 217)
-    draw.img('palette', 43, 266)
+    draw.img('bottle', 132, 237)
+    draw.img('palette', 42, 262)
     draw.img('camera', 143, 263)
 
     -- Rewards
