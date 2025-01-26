@@ -5,8 +5,8 @@ local isMobile = (love.system.getOS() == 'Android' or love.system.getOS() == 'iO
 local isWeb = (love.system.getOS() == 'Web')
 
 love.window.setMode(
-  isWeb and (W / 3 * 2) or W * 2,
-  isWeb and (H / 3 * 2) or H * 2,
+  isWeb and W * 2 or W * 2,
+  isWeb and H * 2 or H * 2,
   { fullscreen = false, highdpi = true }
 )
 
@@ -15,7 +15,7 @@ love.graphics.setDefaultFilter('nearest', 'nearest')
 local globalScale, Wx, Hx, offsX, offsY
 
 local updateLogicalDimensions = function ()
-  love.window.setTitle('Game')
+  love.window.setTitle('Blow Something')
   local wDev, hDev = love.graphics.getDimensions()
   globalScale = math.min(wDev / W, hDev / H)
   Wx = wDev / globalScale

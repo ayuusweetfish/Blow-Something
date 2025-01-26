@@ -7,6 +7,7 @@ local function find_imgs(path)
     if basename:sub(-4) == '.png' or basename:sub(-4) == '.jpg' then
       local name = (path .. '/' .. basename:sub(1, #basename - 4)):sub(2)
       local img_path = 'img' .. path .. '/' .. basename
+      print(name)
       local img = love.graphics.newImage(img_path)
       imgs[name] = img
     else

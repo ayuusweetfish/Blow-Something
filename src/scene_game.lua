@@ -301,7 +301,6 @@ local particles = function ()
               r = r, g = g, b = b, a = 1,
               t = 0, ttl = 120 + math.random() * 120,
             }
-            -- print(px, py)
           end
         end
       end
@@ -435,7 +434,6 @@ return function ()
       targetWord, targetWordText = nil, nil
     end
 
-    print('start inflating')
     bubblesRemaining = bubblesRemaining - 1
     state, sinceState = STATE_INFLATE, 0
     inflateStart = nil
@@ -542,7 +540,6 @@ return function ()
 
   s.release = function (x, y)
     if state == STATE_INFLATE and inflateStart then
-      print('start painting', sinceState - inflateStart)
       state, sinceState = STATE_PAINT, 0
       -- Pull the slot at the first bubble release
       if bubblesRemaining == 2 then
