@@ -2,7 +2,7 @@ BOON=~/Downloads/boon-macos-amd64/boon
 NODE=~/Downloads/node-v20.12.2-darwin-x64/bin/node
 LOVEJS_INDEX=~/Downloads/lovejs-11/node_modules/love.js/index.js
 
-${BOON} build . --target love
+${BOON} build . --target windows
 
 # Web
 rm -rf release/Game-Name-web
