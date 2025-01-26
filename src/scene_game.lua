@@ -452,6 +452,8 @@ return function ()
 
   local texCanvas
 
+  local catThinkFrame = -1
+
   s.release = function (x, y)
     if state == STATE_INFLATE and inflateStart then
       print('start painting', sinceState - inflateStart)
@@ -478,6 +480,7 @@ return function ()
           local s = imageFileData:getString()
           chReq:push(s)
           recognitionResult = '...'
+          catThinkFrame = 1
           -- Move on
           if bubblesRemaining > 0 then
             state, sinceState = STATE_INITIAL, 0
@@ -491,9 +494,32 @@ return function ()
   end
 
   local T = 0
+  local catTailFrame = 1
+  local catTailStop = -1
 
   s.update = function ()
     T = T + 1
+    if T % 30 == 0 then
+      -- Cat animations
+      -- Tail
+      if catTailStop >= 0 then
+        catTailStop = catTailStop - 1
+      else
+        catTailFrame = catTailFrame % 8 + 1
+        if catTailFrame == 1 or catTailFrame == 5 then
+          if math.random(3) ~= 0 then
+            -- Stop
+            catTailStop = 10 + math.random(20)
+          end
+        end
+      end
+
+      -- Loading
+      if catThinkFrame > 0 then
+        catThinkFrame = catThinkFrame % 10 + 1
+      end
+    end
+
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
       local t = (sinceState - inflateStart) / 240
@@ -502,7 +528,14 @@ return function ()
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
     end
+
     particles.update()
+
+    local resp = chResp:pop()
+    if resp ~= nil then
+      recognitionResult = resp
+      catThinkFrame = -1
+    end
   end
 
   local Wc, Hc = 160, 180
@@ -632,10 +665,13 @@ return function ()
 
     draw.img('top', 0, 0)
 
-    local catTailFrame = math.floor(T / 30) % 8 + 1
     draw.img('cat_tail/' .. tostring(catTailFrame), 10 - 32, 198)
-    local catBodyFrame = math.floor(T / 30) % 4 + 1
-    draw.img('cat_idle/' .. tostring(catBodyFrame), 10 - 19, 198 - 20)
+    if catThinkFrame > 0 then
+      draw.img('cat_think/' .. tostring(catThinkFrame), 10 - 19, 198 - 20)
+    else
+      local catBodyFrame = math.floor(T / 30) % 4 + 1
+      draw.img('cat_idle/' .. tostring(catBodyFrame), 10 - 19, 198 - 20)
+    end
 
     for i = 1, bubblesRemaining do
       draw.img('stick_small', 128 - (i - 1) * 2, 217)
@@ -656,10 +692,6 @@ return function ()
       love.graphics.draw(confetti, confettiQuads[frame], 0, 0, 0, W / (confettiW / 5))
     end
 
-    local resp = chResp:pop()
-    if resp ~= nil then
-      recognitionResult = resp
-    end
     if recognitionResult ~= nil then
       love.graphics.setColor(0, 0, 0)
       love.graphics.print(recognitionResult, _G['global_font'](14), 10, 160)
