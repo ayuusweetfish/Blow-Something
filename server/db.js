@@ -20,3 +20,16 @@ export const logNetwork = async (url, payload, response, time) => {
   stmt(`INSERT INTO network VALUES (?, ?, ?, ?)`)
     .run(url, payload, response, time)
 }
+
+;`
+  CREATE TABLE IF NOT EXISTS game_record (
+    image TEXT,
+    target TEXT,
+    recognized TEXT,
+    time INTEGER
+  );
+`.split(/;\n\n+/).map((s) => db.prepare(s).run())
+export const logGame = async (target, image, recognized) => {
+  stmt(`INSERT INTO game_record VALUES (?, ?, ?, ?)`)
+    .run(image, target, recognized, Date.now())
+}

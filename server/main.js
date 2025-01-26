@@ -40,13 +40,18 @@ const serveReq = async (req) => {
   }
   if (req.method === 'POST' && url.pathname === '/look') {
     const payload = await req.arrayBuffer()
+    const u8View = new Uint8Array(payload)
+    const p = u8View.indexOf('/'.charCodeAt(0))
+    if (p === -1) throw new ErrorHttpCoded(400, 'Request does not contain target word')
     try {
-      const img = await sharp(payload)
+      const targetWord = new TextDecoder().decode(u8View.slice(0, p))
+      const img = await sharp(payload.slice(p + 1))
       const meta = await img.metadata()
       if (meta.size > 1048576 || meta.width > 512 || meta.height > 512)
         throw new Error('Image too big')
       const reencode = await img.png().toBuffer()
       const result = await llm.askForRecognition(reencode)
+      await db.logGame(targetWord, reencode, result)
       return new Response(result)
     } catch (e) {
       throw new ErrorHttpCoded(400, e.message)

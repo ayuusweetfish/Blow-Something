@@ -604,7 +604,7 @@ return function ()
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
-          enqueueRequest(s)
+          enqueueRequest(targetWord .. '/' .. s)
           -- Thinking
           catThinkFrame = 1
           -- Move on
