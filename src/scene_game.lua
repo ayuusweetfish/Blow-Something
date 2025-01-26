@@ -1,5 +1,6 @@
 local draw = require 'draw_utils'
 local button = require 'button'
+local audio = require 'audio'
 local unpack = unpack or table.unpack
 
 local networkThread = love.thread.newThread('src/network.lua')
@@ -439,6 +440,8 @@ return function ()
     state, sinceState = STATE_INFLATE, 0
     inflateStart = nil
     btnStick.enabled = false
+
+    audio.sfx('bubble_out')
   end)
   buttons[#buttons + 1] = btnStick
 
@@ -574,6 +577,8 @@ return function ()
           if bubblesRemaining > 0 then
             btnStick.enabled = true
           end
+
+          audio.sfx('bubble_pop')
         end
       end
     end

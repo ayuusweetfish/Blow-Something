@@ -52,6 +52,15 @@ end
 _G['global_font'] = fontSizeFactory('fnt/WenQuanYi_Bitmap_Song_14px.ttf', {28, 36})
 love.graphics.setFont(_G['global_font'](40))
 
+local audio = require 'audio'
+local bgm, bgm_update = audio.loop(
+  nil, 0,
+  'aud/background.ogg', (60 * 4) * (60 / 132),
+  1600 * 4
+)
+bgm:setVolume(1)
+bgm:play()
+
 _G['scene_intro'] = require 'scene_intro'
 _G['scene_game'] = require 'scene_game'
 
@@ -94,6 +103,7 @@ local timeStep = 1 / 240
 function love.update(dt)
   T = T + dt
   local count = 0
+  bgm_update()
   while T > timeStep and count < 4 do
     T = T - timeStep
     count = count + 1
