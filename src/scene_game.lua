@@ -345,6 +345,41 @@ local particles = function ()
   }
 end
 
+local borderSlice9 = function (tex, borderWidth)
+  local w, h = tex:getDimensions()
+  local quads = {}
+  local quadDimensions = {}
+  local xs = {0, borderWidth, w - borderWidth, w}
+  local ys = {0, borderWidth, h - borderWidth, h}
+  for r = 1, 3 do
+    for c = 1, 3 do
+      local i = (r - 1) * 3 + c
+      quads[i] = love.graphics.newQuad(
+        xs[c], ys[r], xs[c + 1] - xs[c], ys[r + 1] - ys[r], w, h)
+      quadDimensions[i] = {xs[c + 1] - xs[c], ys[r + 1] - ys[r]}
+    end
+  end
+
+  local draw = function (x, y, w, h)
+    local xs = {0, borderWidth, w - borderWidth, w}
+    local ys = {0, borderWidth, h - borderWidth, h}
+    for r = 1, 3 do
+      for c = 1, 3 do
+        local i = (r - 1) * 3 + c
+        local qw, qh = unpack(quadDimensions[i])
+        love.graphics.draw(tex, quads[i],
+          x + xs[c], y + ys[r], 0,
+          (xs[c + 1] - xs[c]) / qw,
+          (ys[r + 1] - ys[r]) / qh)
+      end
+    end
+  end
+
+  return {
+    draw = draw,
+  }
+end
+
 local targetWords = {
   '大象', '蘑菇', '狗', '太阳', '月亮', '红绿灯',
   '苹果', '橘子', '水母', '树', '房子', '水滴',
@@ -410,6 +445,13 @@ return function ()
   paletteButton(65, 284, 21, 23, 1, .20, .81)
   paletteButton(87, 284, 22, 23, .62, .93, .98)
   paletteButton(106, 269, 17, 38, .5, .5, .5)
+
+  local speechBubbles = {
+    borderSlice9(draw.get('speech_1'), 7),
+    borderSlice9(draw.get('speech_2'), 7),
+    borderSlice9(draw.get('speech_3'), 7),
+    borderSlice9(draw.get('speech_4'), 7),
+  }
 
   local rewardPositions = {
     {17, 300},
@@ -811,6 +853,12 @@ return function ()
       love.graphics.setColor(0, 0, 0)
       love.graphics.print(recognitionResult, _G['global_font'](14), 10, 160)
     end
+
+    love.graphics.setColor(1, 1, 1)
+    speechBubbles[1].draw(100, 100, 50, 30)
+    speechBubbles[2].draw(100, 140, 50, 30)
+    speechBubbles[3].draw(100, 180, 50, 30)
+    speechBubbles[4].draw(100, 220, 50, 30)
   end
 
   s.destroy = function ()
