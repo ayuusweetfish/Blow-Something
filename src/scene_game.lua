@@ -454,6 +454,7 @@ return function ()
 
   local catThinkFrame = -1
   local catAnswerSeq, catAnswerFrame = -1, -1
+  local catBingoFrame = -1
   local catBingoSince = -1  -- Record ticks for differently paced animations, see below
 
   s.release = function (x, y)
@@ -523,8 +524,15 @@ return function ()
       -- Answering
       if catAnswerFrame > 0 then
         catAnswerFrame = catAnswerFrame + 1
-        if catAnswerFrame >= 24 then
+        if catAnswerFrame > 24 then
           catAnswerSeq, catAnswerFrame = -1, -1
+        end
+      end
+      -- Bingo
+      if catBingoFrame > 0 then
+        catBingoFrame = catBingoFrame + 1
+        if catBingoFrame > 14 then
+          catBingoFrame = -1
         end
       end
     end
@@ -547,6 +555,7 @@ return function ()
       catThinkFrame = -1
       -- Is correct?
       if state == STATE_FINAL then
+        catBingoFrame = 1
         catBingoSince = 0
       else
         catAnswerSeq = math.random(2)
@@ -693,11 +702,12 @@ return function ()
       local mappedFrame = math.max(1, math.min(3, catAnswerFrame, 25 - catAnswerFrame))
       draw.img('cat_answ/' .. tostring(catAnswerSeq) .. '_' ..
         tostring(mappedFrame), 10 - 19, 198 - 20)
-    elseif catBingoSince > 0 then
-      local frame = math.min(10, math.min(math.floor(catBingoSince / 30) + 1))
-      if frame <= 9 then
-        draw.img('cat_bingo/' .. tostring(frame), 10 - 19, 198 - 20)
-        -- Otherwise, empty frame
+    elseif catBingoFrame > 0 then
+      if catBingoFrame >= 10 and catBingoFrame <= 12 then
+        -- Empty frame
+      else
+        local mappedFrame = catBingoFrame - (catBingoFrame > 12 and 3 or 0)
+        draw.img('cat_bingo/' .. tostring(mappedFrame), 10 - 19, 198 - 20)
       end
     else
       drawTail()
