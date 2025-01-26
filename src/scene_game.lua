@@ -770,7 +770,7 @@ return function ()
       backgroundFrame = 1 + math.floor(catBingoSince / 30)
       if backgroundFrame >= 8 then backgroundFrame = 0 end
     end
-    draw.img('background/' .. tostring(backgroundFrame), 0, 32)
+    draw.img('background/' .. tostring(backgroundFrame), 0, backgroundFrame == 0 and 32 or 0)
 
     -- Canvas background
     draw.img('blackboard', 15, 59)
