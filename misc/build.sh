@@ -10,6 +10,8 @@ ${BOON} build . --target ${TARGET}
 rm -rf release/Game-Name-web
 ${NODE} ${LOVEJS_INDEX} -t "Game Name" -m 64000000 "release/Game Name.love" release/Game-Name-web
 cp misc/web_index.html release/Game-Name-web/index.html
+# Patch for filesystem access
+sed -i '' 's/var SYSCALLS/try{if(!window.FS)window.FS=FS;}catch(e){}var SYSCALLS/' release/Game-Name-web/love.js
 rm -rf release/Game-Name-web/theme
 
 # (cd release/*-web; python3 -m http.server)

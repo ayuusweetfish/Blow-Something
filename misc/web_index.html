@@ -75,6 +75,9 @@
         print: function (text) {
           if (text[0] === '^') {
             text = text.substring(1).trim();
+            var splitAt = text.indexOf('^');
+            var savePath = text.substring(0, splitAt);
+            text = text.substring(splitAt + 1);
             var payload = new Uint8Array(text.length / 2);
             for (var i = 0; i < payload.length; i++)
               payload[i] = parseInt(text.substring(i * 2, i * 2 + 2), 16)
@@ -83,8 +86,14 @@
               body: payload.buffer,
             }).then((resp) => {
               resp.text().then((text) => {
-                console.log(text);
+                FS.writeFile(savePath, text);
+              }).catch((e) => {
+                console.log(e);
+                FS.writeFile(savePath, '<猫脑过载>');
               });
+            }).catch((e) => {
+              console.log(e);
+              FS.writeFile(savePath, '<猫脑过载>');
             });
             return;
           }
@@ -109,6 +118,7 @@
           return canvas;
         })(),
         setStatus: function(text) {
+          if (!loadingText) return;
           if (text) {
             if (text === 'Running...') text = 'Loading assets...';
             drawLoadingText(text);

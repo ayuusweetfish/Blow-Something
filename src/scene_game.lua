@@ -5,14 +5,37 @@ local unpack = unpack or table.unpack
 
 local enqueueRequest, fetchResponse
 if love.system.getOS() == 'Web' then
+  local id = 0
+  local fetchFiles = {}
   enqueueRequest = function (s)
+    id = (id + 1) % 1000
+    local idStr = string.format('%10d%03d', os.time(), id)
+    -- https://emscripten.org/docs/api_reference/Filesystem-API.html
+    -- `/tmp` is autmoatically mounted as an MEMFS
+    local fetchFile = '/tmp/' .. idStr
     local encoded = {'^'}
+    encoded[#encoded + 1] = fetchFile
+    encoded[#encoded + 1] = '^'
     for i = 1, #s do
       encoded[#encoded + 1] = string.format('%02x', string.byte(s, i))
     end
     print(table.concat(encoded))
+    fetchFiles[#fetchFiles + 1] = fetchFile
   end
-  fetchResponse = function () return nil end
+  fetchResponse = function ()
+    if #fetchFiles > 0 then
+      -- Check the first entry
+      local path = fetchFiles[1]
+      local f = io.open(path, 'rb')
+      if f then
+        local content = f:read('*a')
+        table.remove(fetchFiles, 1)
+        f:close()
+        os.remove(path)
+        return content
+      end
+    end
+  end
 else
   -- Local run
   local networkThread = love.thread.newThread('src/network.lua')
