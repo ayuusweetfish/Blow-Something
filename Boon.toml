@@ -4,7 +4,7 @@
 [project]
 # Author information. If you have a company, then use that in this
 # field instead.
-authors = "Game Team"
+authors = "野鱼羊果"
 
 # A description of your game. Not used in all builds.
 description = ""
@@ -17,18 +17,18 @@ email = "claire@ayu.land"
 # or other special characters, though they can be used. On Windows,
 # this will end up as the name of the executable file.
 # Example: "My Game" and package_name="my_game" becomes "my_game.exe"
-package_name = "Game_Name"
+package_name = "Blow_Something"
 
 # The name of your game. This will be used when distributing the Game
 # as a zip file. On macOS, this is also used as the app file name.
-title = "Game Name"
+title = "Blow Something"
 
 # The website associated with your game. Not used in all builds.
-url = "https://github.com/ayuusweetfish/"
+url = "https://github.com/ayuusweetfish/Blow-Something"
 
 # The Uniform Type Identifier for your game. This is required for the
 # macOS build of the game.
-uti = "land.ayu.gamename"
+uti = "land.ayu.blowsomething"
 
 # An arbitrary version for the current iteration of the game. Can use
 # any desired version format. This will be used to differentiate the

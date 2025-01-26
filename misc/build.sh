@@ -7,11 +7,9 @@ TARGET=${1:-all}
 ${BOON} build . --target ${TARGET}
 
 # Web
-rm -rf release/Game-Name-web
-${NODE} ${LOVEJS_INDEX} -t "Game Name" -m 64000000 "release/Game Name.love" release/Game-Name-web
-cp misc/web_index.html release/Game-Name-web/index.html
+rm -rf release/Blow-Something-web
+${NODE} ${LOVEJS_INDEX} -t "Blow Something" -m 64000000 "release/Blow Something.love" release/Blow-Something-web
+cp misc/web_index.html release/Blow-Something-web/index.html
 # Patch for filesystem access
-sed -i '' 's/var SYSCALLS/try{if(!window.FS)window.FS=FS;}catch(e){}var SYSCALLS/' release/Game-Name-web/love.js
-rm -rf release/Game-Name-web/theme
-
-# (cd release/*-web; python3 -m http.server)
+sed -i '' 's/var SYSCALLS/try{if(!window.FS)window.FS=FS;}catch(e){}var SYSCALLS/' release/Blow-Something-web/love.js
+rm -rf release/Blow-Something-web/theme
