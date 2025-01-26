@@ -75,6 +75,44 @@ const requestLLM_OpenAI = (endpoint, model, temperature, key) => async (messages
   }
 }
 
+const requestLLM_Google = (model, temperature, key) => async (messages) => {
+  // Ref: https://ai.google.dev/api/generate-content#v1beta.models.generateContent
+  const resp = await loggedFetchJSON(
+    'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        generationConfig: {
+          temperature: temperature,
+        },
+        systemInstruction: { parts: [{ text:
+          messages.filter(({ role }) => role === 'system')
+                  .map(({ content }) => content).join('\n'),
+        }] },
+        contents:
+          messages.filter(({ role }) => role === 'user')
+                  .map(({ content }) => ({
+                    role: 'user',
+                    parts: content, // (Parts[]) content
+                  })),
+      }),
+    }
+  )
+
+  // Extract text
+  const { candidates } = resp
+  const [ candidate ] = candidates
+  const { content } = candidate
+  const { parts } = content
+  if (!(parts instanceof Array)) throw new Error('Incorrect schema!')
+  const text = parts.map(({ text }) => text || '').join('')
+
+  return [resp, text]
+}
+
 const requestLLM_GLM4vPlus = requestLLM_OpenAI(
   'https://open.bigmodel.cn/api/paas/v4/chat/completions', 'glm-4v-plus-0111', 1.0,
   Deno.env.get('API_KEY_ZHIPU') || prompt('API key (Zhipu):')
@@ -82,6 +120,14 @@ const requestLLM_GLM4vPlus = requestLLM_OpenAI(
 const requestLLM_GLM4vFlash = requestLLM_OpenAI(
   'https://open.bigmodel.cn/api/paas/v4/chat/completions', 'glm-4v-flash', 1.0,
   Deno.env.get('API_KEY_ZHIPU') || prompt('API key (Zhipu):')
+)
+const requestLLM_Gemini15Flash = requestLLM_Google(
+  'gemini-1.5-flash', 1.0,
+  Deno.env.get('API_KEY_GOOGLE') || prompt('API key (Google):')
+)
+const requestLLM_Gemini20FlashExp = requestLLM_Google(
+  'gemini-2.0-flash-exp', 1.0,
+  Deno.env.get('API_KEY_GOOGLE') || prompt('API key (Google):')
 )
 
 const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
@@ -99,6 +145,7 @@ const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
 // Application-specific routines
 
 const _askForRecognition = async (image) => {
+if (0) {
   const [_, text] = await requestLLM_GLM4vPlus([
     { role: 'user', content: [
       {
@@ -110,6 +157,13 @@ const _askForRecognition = async (image) => {
         type: 'text',
         text: '这张图描绘了一种人们所熟知的事物。它是人类尝试用水滴绘制出的图案外形，所以可能不准确。你可以尽力猜猜原本想画的是什么吗？只需给出你所猜的词即可。',
       },
+    ] },
+  ])
+}
+  const [_, text] = await requestLLM_Gemini15Flash([
+    { role: 'user', content: [
+      { inlineData: { mimeType: 'image/png', data: encodeBase64(image) } },
+      { text: '这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？只需给出你所猜的词，不要增加额外的内容。' },
     ] },
   ])
   return text

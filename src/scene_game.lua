@@ -419,8 +419,8 @@ local borderSlice9 = function (tex, borderWidth)
 end
 
 local targetWords = {
-  '大象', '蘑菇', '狗', '太阳', '月亮', '红绿灯',
-  '苹果', '橘子', '水母', '树', '房子', '水滴',
+  '太阳', '月亮', '云',
+  '苹果', '橙子', '香蕉', '水母', '树', '大象', '蘑菇', '花生',
 }
 
 return function ()

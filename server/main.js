@@ -49,11 +49,13 @@ const serveReq = async (req) => {
       const meta = await img.metadata()
       if (meta.size > 1048576 || meta.width > 512 || meta.height > 512)
         throw new Error('Image too big')
-      const reencode = await img.png().toBuffer()
+      const composite = await img.flatten({ background: '#101010' })
+      const reencode = await composite.png().toBuffer()
       const result = await llm.askForRecognition(reencode)
       await db.logGame(targetWord, reencode, result)
       return new Response(result)
     } catch (e) {
+      console.log(e.message, e.stack)
       throw new ErrorHttpCoded(400, e.message)
     }
   }
