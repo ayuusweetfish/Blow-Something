@@ -33,14 +33,14 @@ const serveReq = async (req) => {
 <!DOCTYPE html>
 <html><head>
   <style>
-  td { padding: 0 3em; text-align: center; }
+  td { min-width: 6em; text-align: center; }
   img { height: 100px; }
   .bingo { background: #e0ffe0; }
   </style>
 </head><body>
 <table>
-<tr><th></th><th>目标</th><th>猜</th></tr>
-${games.map(([image, target, recognized]) => `<tr class='${target === recognized ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${target}</td><td>${recognized}</td></tr>`).join('\n')}
+<tr><th></th><th>猜</th><th>目标</th></tr>
+${games.map(([image, target, recognized]) => `<tr class='${target === recognized ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${recognized}</td><td>${target}</td></tr>`).join('\n')}
 </table>
 </body></html>
 `

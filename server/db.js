@@ -42,7 +42,7 @@ export const recentSuccessfulGames = async () => {
 }
 export const recentGames = async () => {
   const values =
-    stmt(`SELECT image, target, recognized FROM game_record ORDER BY rowid DESC LIMIT 30`)
+    stmt(`SELECT image, target, recognized FROM game_record ORDER BY rowid DESC LIMIT 50`)
       .values()
   return values
 }
