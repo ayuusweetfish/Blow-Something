@@ -484,6 +484,7 @@ return function ()
   end
 
   local recognitionResult
+  local recognitionResultText
 
   s.press = function (x, y)
     -- Check the buttons first, in case the player changes colour before inflation
@@ -521,6 +522,7 @@ return function ()
 
   local catThinkFrame = -1
   local catAnswerSeq, catAnswerFrame = -1, -1
+  local catAnswerSpeechBubble = 1
   local catBingoFrame = -1
   local catBingoSince = -1  -- Record ticks for differently paced animations, see below
 
@@ -556,7 +558,7 @@ return function ()
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
           chReq:push(s)
-          recognitionResult = '...'
+          -- Thinking
           catThinkFrame = 1
           -- Move on
           if bubblesRemaining > 0 then
@@ -630,6 +632,7 @@ return function ()
     local resp = chResp:pop()
     if resp ~= nil then
       recognitionResult = resp
+      recognitionResultText = love.graphics.newText(_G['global_font'](14), resp)
       catThinkFrame = -1
       -- Is correct?
       if state == STATE_FINAL then
@@ -640,6 +643,7 @@ return function ()
         catAnswerSeq = math.random(2)
         catAnswerFrame = 1
       end
+      catAnswerSpeechBubble = math.random(#speechBubbles)
     end
   end
 
@@ -849,16 +853,16 @@ return function ()
       love.graphics.draw(confetti, confettiQuads[frame], 0, 0, 0, W / (confettiW / 5))
     end
 
-    if recognitionResult ~= nil then
-      love.graphics.setColor(0, 0, 0)
-      love.graphics.print(recognitionResult, _G['global_font'](14), 10, 160)
+    if catAnswerFrame >= 0 and recognitionResult ~= nil then
+      local t = math.min(1, catAnswerFrame / 4)
+      local w = recognitionResultText:getWidth() * t + 14
+      love.graphics.setColor(1, 1, 1)
+      speechBubbles[catAnswerSpeechBubble].draw(10, 158, math.floor(w + 0.5), 24)
+      if catAnswerFrame >= 6 then
+        love.graphics.setColor(0, 0, 0)
+        love.graphics.draw(recognitionResultText, 18, 163)
+      end
     end
-
-    love.graphics.setColor(1, 1, 1)
-    speechBubbles[1].draw(100, 100, 50, 30)
-    speechBubbles[2].draw(100, 140, 50, 30)
-    speechBubbles[3].draw(100, 180, 50, 30)
-    speechBubbles[4].draw(100, 220, 50, 30)
   end
 
   s.destroy = function ()
