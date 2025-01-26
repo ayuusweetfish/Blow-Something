@@ -64,7 +64,7 @@ bgm:play()
 _G['scene_intro'] = require 'scene_intro'
 _G['scene_game'] = require 'scene_game'
 
-local curScene = scene_game()
+local curScene = scene_intro()
 local lastScene = nil
 local transitionTimer = 0
 local currentTransition = nil
