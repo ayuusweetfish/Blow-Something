@@ -349,7 +349,7 @@ return function ()
   local s = {}
   local W, H = W, H
 
-  local dispScale = 80
+  local dispScale = 72
 
   local n = 100
   local p = {}
@@ -415,7 +415,7 @@ return function ()
   local rewardCount = 0
 
   local Xc = W * 0.5
-  local Yc = math.floor(H * 0.47)
+  local Yc = 156
   local blitCurrentBubbleOntoCanvas
 
   local particles = particles()
@@ -593,7 +593,7 @@ return function ()
     if key == 'space' then rewardCount = rewardCount + 1 end
   end
 
-  local Wc, Hc = 160, 180
+  local Wc, Hc = 144, 180
   local WcEx, HcEx = 10, 10
   local tex = love.image.newImageData(Wc + WcEx * 2, Hc + HcEx * 2, 'rgba8')
   local img = love.graphics.newImage(tex)
@@ -652,7 +652,8 @@ return function ()
     draw.img('background/' .. tostring(backgroundFrame), 0, 32)
 
     -- Canvas background
-    love.graphics.setColor(1, 0.96, 0.92)
+    draw.img('blackboard', 15, 59)
+    love.graphics.setColor(1, 0.96, 0.92, 0.8)
     love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
 
     -- Previous bubbles
