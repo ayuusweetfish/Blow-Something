@@ -48,12 +48,27 @@ end
 
 love.physics.setMeter(1)
 
-local createBubbles = function (n)
+local createBubbles = function (n, max_x, max_y)
   local scale = 5
+
+  local world = love.physics.newWorld()
+
+  max_x = max_x * scale
+  max_y = max_y * scale
+  local body_bound = love.physics.newBody(world, 0, 0, 'static')
+  local pts = {{-max_x, -max_y}, {-max_x, max_y}, {max_x, max_y}, {max_x, -max_y}, {-max_x, -max_y}}
+  for i = 1, 4 do
+    local shape = love.physics.newEdgeShape(
+      pts[i][1], pts[i][2],
+      pts[i + 1][1], pts[i + 1][2]
+    )
+    local fixt = love.physics.newFixture(body_bound, shape)
+    fixt:setRestitution(0.9)  -- Bounce a lot
+  end
 
   local b = {}
   local b_id = {}
-  local world = love.physics.newWorld()
+
   for i = 1, n do
     local x = math.cos(i / n * math.pi * 2) * 1
     local y = math.sin(i / n * math.pi * 2) * 1
@@ -497,7 +512,6 @@ return function ()
   local bubbles
 
   local bubblesRemaining = 3
-  local texCanvas, imgCanvas
 
   local targetWord, targetWordText
   -- Words are picked from a randomly shuffled sequence
@@ -519,6 +533,14 @@ return function ()
   end
 
   local previousGuesses
+
+  local Wc, Hc = 144, 180
+  local WcEx, HcEx = 10, 10
+  local tex = love.image.newImageData(Wc + WcEx * 2, Hc + HcEx * 2, 'rgba8')
+  local img = love.graphics.newImage(tex)
+
+  local texCanvas = love.image.newImageData(Wc, Hc, 'rgba8')
+  local imgCanvas = love.graphics.newImage(texCanvas)
 
   local STATE_INITIAL = 0
   local STATE_INFLATE = 1
@@ -613,7 +635,7 @@ return function ()
 
     if state == STATE_INFLATE then
       inflateStart = sinceState
-      bubbles = createBubbles(n)
+      bubbles = createBubbles(n, 1.1, Hc / Wc * 1.1)
       return true
     end
 
@@ -796,14 +818,6 @@ return function ()
     if key == 'space' then rewardCount = rewardCount + 1 end
     if key == '1' then randomTargetWord() end
   end
-
-  local Wc, Hc = 144, 180
-  local WcEx, HcEx = 10, 10
-  local tex = love.image.newImageData(Wc + WcEx * 2, Hc + HcEx * 2, 'rgba8')
-  local img = love.graphics.newImage(tex)
-
-  texCanvas = love.image.newImageData(Wc, Hc, 'rgba8')
-  imgCanvas = love.graphics.newImage(texCanvas)
 
   local drawBubbleOutline = function (tex, WcEx, HcEx, paintR, paintG, paintB)
     local pts = {}
