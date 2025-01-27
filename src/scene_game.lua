@@ -52,6 +52,7 @@ local createBubbles = function (n)
   local scale = 5
 
   local b = {}
+  local b_id = {}
   local world = love.physics.newWorld()
   for i = 1, n do
     local x = math.cos(i / n * math.pi * 2) * 1
@@ -67,6 +68,7 @@ local createBubbles = function (n)
     fixt:setRestitution(0.9)    -- Bounce a lot
 
     b[i] = body
+    b_id[body] = i
   end
 
   local body_cen = love.physics.newBody(world, 0, 0, 'dynamic')
@@ -148,56 +150,95 @@ local createBubbles = function (n)
     return parity
   end
 
+  local T = 0
+
   local imp_r = 0.1
 
   local px, py = nil, nil
   local p_start_inside = false
-  local plx, ply = nil, nil -- Last position of effect
-  local set_ptr = function (x, y)
+
+  local hist = {}
+  local pop_expired_history = function ()
+    while #hist > 1 and hist[1][3] < T - 2.0 do
+      table.remove(hist, 1)
+    end
+  end
+
+  local set_ptr = function (x, y, t)
+    pop_expired_history(t)
     if px == nil then
       p_start_inside = check_inside(x, y)
-      plx, ply = x * scale, y * scale
+      hist = { { x, y, T } }
+    else
+      -- If sufficiently far from last record, add a new one
+      local lastx, lasty = unpack(hist[#hist])
+      local dsq = (x - lastx) * (x - lastx) + (y - lasty) * (y - lasty)
+      if dsq >= 100e-4 then
+        local m = math.floor(math.sqrt(dsq / 25e-4))
+        for i = 1, m do
+          local px = lastx + (x - lastx) * i / m
+          local py = lasty + (y - lasty) * i / m
+          hist[#hist + 1] = { px, py, T }
+          if #hist >= 30 then table.remove(hist, 1) end
+        end
+      elseif dsq >= 25e-4 then
+        hist[#hist + 1] = { x, y, T }
+        if #hist >= 30 then table.remove(hist, 1) end
+      end
     end
     px, py = x * scale, y * scale
   end
   local rel_ptr = function ()
     px, py = nil, nil
-    plx, ply = nil, nil
   end
   local get_ptr = function ()
     if px then return px / scale, py / scale, imp_r end
     return nil
   end
+  local get_ptr_trail = function () return hist, scale end
 
   local update = function (dt)
+    T = T + dt
     if px ~= nil then
-      local effective = (check_inside(px / scale, py / scale) == p_start_inside)
-      if effective then
-        plx, ply = px, py
-      else
-        -- Nudge effective position towards pointer
-        -- TODO if time allows: if `(plx, ply)` is valid, nudge it towards pointer;
-        -- otherwise, nudge it against
-      end
-      if effective then
+      pop_expired_history()
+      local min_dist = {}
+      local min_dist_dir = {}
+      -- Temporarily add current pointer to history
+      hist[#hist + 1] = { px / scale, py / scale }
+      for i = 1, #hist do
+        local px, py = unpack(hist[i])
+        px = px * scale
+        py = py * scale
+        local effective = (check_inside(px / scale, py / scale) == p_start_inside)
+        if not effective then break end
         world:queryBoundingBox(
-          plx - imp_r * scale, ply - imp_r * scale,
-          plx + imp_r * scale, ply + imp_r * scale,
+          px - imp_r * scale, py - imp_r * scale,
+          px + imp_r * scale, py + imp_r * scale,
           function (fixt)
             local b = fixt:getBody()
             local x1, y1 = b:getPosition()
-            local dx, dy = (x1 - plx) / scale, (y1 - ply) / scale
+            local dx, dy = (x1 - px) / scale, (y1 - py) / scale
             local dsq = dx * dx + dy * dy
             if dsq < imp_r * imp_r then
-              local d = math.sqrt(dsq)
-              local t = 1 - d / imp_r
-              local imp_intensity = 1 - t * t
-              local imp_scale = 2.5 * scale * imp_intensity / d
-              b:applyForce(dx * imp_scale, dy * imp_scale)
+              local last_min = min_dist[b]
+              if last_min == nil or last_min > dsq then
+                min_dist[b] = dsq
+                min_dist_dir[b] = {dx, dy}
+              end
             end
             return true
           end
         )
+      end
+      -- Remove current pointer
+      hist[#hist] = nil
+      for b, dsq in pairs(min_dist) do
+        local d = math.sqrt(dsq)
+        local dx, dy = unpack(min_dist_dir[b])
+        local t = 1 - d / imp_r
+        local imp_intensity = 1 - t * t
+        local imp_scale = 2.5 * scale * imp_intensity / d
+        b:applyForce(dx * imp_scale, dy * imp_scale)
       end
     end
 
@@ -251,6 +292,7 @@ local createBubbles = function (n)
     set_ptr = set_ptr,
     rel_ptr = rel_ptr,
     get_ptr = get_ptr,
+    get_ptr_trail = get_ptr_trail,
     update = update,
     close = close,
   }
@@ -836,6 +878,14 @@ return function ()
           Xc + px * dispScale,
           Yc + py * dispScale,
           pr * dispScale)
+        local hist, scale = bubbles.get_ptr_trail()
+        for i = 1, #hist do
+          local x, y = unpack(hist[i])
+          love.graphics.circle('fill',
+            Xc + x * dispScale,
+            Yc + y * dispScale,
+            3)
+        end
       end
     end
 
