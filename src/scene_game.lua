@@ -76,7 +76,6 @@ local bubbles = function (p)
 
   local expected_r
 
-  local joints_inflating = {}
   local set_size = function (r)
     expected_r = r
     for i = 1, n do
@@ -88,42 +87,38 @@ local bubbles = function (p)
       b[i]:setLinearVelocity(0, 0)
       b[i]:setAngularVelocity(0)
     end
+  end
 
-    for i = 1, #joints_inflating do
-      local j = joints_inflating[i]
-      j.joint:setLength(expected_r * j.rate)
-      if j.freq_rate then
-        j.joint:setFrequency(j.freq_rate / expected_r^3)
+  local remove_joints = function ()
+    local js = world:getJoints()
+    for i = 1, #js do js[i]:destroy() end
+  end
+
+  local rebuild_joints = function ()
+    remove_joints()
+    for i = 1, n do
+      local b1 = b[i]
+      local x1, y1 = b1:getPosition()
+
+      for j = 1, 3 do
+        local b2 = b[(i + j - 1) % n + 1]
+        local x2, y2 = b2:getPosition()
+        local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
+        joint:setDampingRatio(10) -- Oscillate less
+        joint:setLength(expected_r * 2 * math.sin(math.pi / n * j) * scale)
+        joint:setFrequency((6 - j) * 0.2 / (0.1 + expected_r)^2.1 * 5)
       end
+
+      local joint = love.physics.newDistanceJoint(b1, body_cen, x1, y1, 0, 0)
+      joint:setDampingRatio(0)
+      joint:setLength(expected_r * scale)
+      joint:setFrequency(0.01 / (0.1 + expected_r)^2.1 * 5)
     end
+    print(expected_r, 1 / (0.1 + expected_r)^1.5 * 10)
   end
 
-  for i = 1, n do
-    local b1 = b[i]
-    local x1, y1 = b1:getPosition()
-
-    for j = 1, 3 do
-      local b2 = b[(i + j - 1) % n + 1]
-      local x2, y2 = b2:getPosition()
-      local joint = love.physics.newDistanceJoint(b1, b2, x1, y1, x2, y2)
-      joint:setDampingRatio(10) -- Oscillate less
-      joints_inflating[#joints_inflating + 1] = {
-        joint = joint,
-        rate = 2 * math.sin(math.pi / n * j) * scale,
-        freq_rate = (j == 3 and 3 or 4) * 0.2
-      }
-    end
-
-    local joint = love.physics.newDistanceJoint(b1, body_cen, x1, y1, 0, 0)
-    joint:setDampingRatio(0)
-    joint:setFrequency(0.05)
-    joints_inflating[#joints_inflating + 1] = {
-      joint = joint,
-      rate = 1 * scale,
-      freq_rate = 0.05 * 0.2,
-    }
-  end
   set_size(0.1)
+  rebuild_joints()
 
   local set_pos = function (i, x, y)
     b[i]:setPosition(x * scale, y * scale)
@@ -248,6 +243,8 @@ local bubbles = function (p)
     get_pos = get_pos,
     get_body = get_body,
     set_size = set_size,
+    remove_joints = remove_joints,
+    rebuild_joints = rebuild_joints,
     check_inside = check_inside,
     set_ptr = set_ptr,
     rel_ptr = rel_ptr,
@@ -542,6 +539,7 @@ return function ()
 
     if state == STATE_INFLATE then
       inflateStart = sinceState
+      bubbles.remove_joints()
       return true
     end
 
@@ -579,6 +577,7 @@ return function ()
   s.release = function (x, y)
     if state == STATE_INFLATE and inflateStart then
       state, sinceState = STATE_PAINT, 0
+      bubbles.rebuild_joints()
       -- Pull the slot at the first bubble release
       if bubblesRemaining == 2 then
         slotPullSince = 0
