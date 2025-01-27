@@ -205,12 +205,33 @@ local createBubbles = function (n)
       local min_dist_dir = {}
       -- Temporarily add current pointer to history
       hist[#hist + 1] = { px / scale, py / scale }
+      -- History point is effective if its at the same side of the bubble
+      -- (interior/exterior) as the starting point
+      local effective = {}
       for i = 1, #hist do
         local px, py = unpack(hist[i])
         px = px * scale
         py = py * scale
-        local effective = (check_inside(px / scale, py / scale) == p_start_inside)
-        if not effective then break end
+        effective[i] = (check_inside(px / scale, py / scale) == p_start_inside)
+      end
+      -- Find longest effective sequence
+      local eff_start, eff_end = 1, 0
+      local cur_start
+      for i = 1, #hist do
+        if effective[i] then
+          if not cur_start then cur_start = i end
+          if i - cur_start > eff_end - eff_start then
+            eff_start, eff_end = cur_start, i
+          end
+        else
+          cur_start = nil
+        end
+      end
+      -- Find each mass point's minimum distance to an effective history point
+      for i = eff_start, eff_end do
+        local px, py = unpack(hist[i])
+        px = px * scale
+        py = py * scale
         world:queryBoundingBox(
           px - imp_r * scale, py - imp_r * scale,
           px + imp_r * scale, py + imp_r * scale,
@@ -237,7 +258,7 @@ local createBubbles = function (n)
         local dx, dy = unpack(min_dist_dir[b])
         local t = 1 - d / imp_r
         local imp_intensity = 1 - t * t
-        local imp_scale = 2.5 * scale * imp_intensity / d
+        local imp_scale = 3 * scale * imp_intensity / d
         b:applyForce(dx * imp_scale, dy * imp_scale)
       end
     end
