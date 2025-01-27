@@ -39,8 +39,8 @@ const serveReq = async (req) => {
   </style>
 </head><body>
 <table>
-<tr><th></th><th>猜</th><th>目标</th></tr>
-${games.map(([image, target, recognized]) => `<tr class='${target === recognized ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${recognized}</td><td>${target}</td></tr>`).join('\n')}
+<tr><th></th><th>猜</th><th>目标</th><th>提示</th></tr>
+${games.map(([image, target, hints, recognized]) => `<tr class='${target === recognized ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${recognized}</td><td>${target}</td><td>${hints}</td></tr>`).join('\n')}
 </table>
 </body></html>
 `
@@ -74,7 +74,7 @@ ${games.map(([image, target, recognized]) => `<tr class='${target === recognized
       const composite = await img.flatten({ background: '#101010' })
       const reencode = await composite.png().toBuffer()
       const result = await llm.askForRecognition(reencode, targetWord, prevAttempts)
-      await db.logGame(targetWord, reencode, result)
+      await db.logGame(targetWord, reencode, llm.getHint(targetWord, prevAttempts), result)
       return new Response(result)
     } catch (e) {
       console.log(e.message, e.stack)

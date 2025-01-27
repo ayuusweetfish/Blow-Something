@@ -160,6 +160,13 @@ const hint = {
   '汽车': '某种交通工具',
 }
 
+// For logging and debugging
+export const getHint = (targetWord, prevAttempts) => {
+  if (prevAttempts.length === 0) return ''
+  return prevAttempts.map((s) => `${s}×`).join(' ') +
+    (prevAttempts.length >= 2 ? ` ${hint[targetWord]}?` : '')
+}
+
 const _askForRecognition = async (image, targetWord, prevAttempts) => {
   const prev = (prevAttempts.length > 0 ? `已知错误答案：${prevAttempts.join('、')}。` : '')
   const ref = (prevAttempts.length >= 2 ? `小提示：你是否觉得它像${hint[targetWord]}？` : '')

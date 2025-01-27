@@ -25,24 +25,25 @@ export const logNetwork = async (url, payload, response, time) => {
   CREATE TABLE IF NOT EXISTS game_record (
     image TEXT,
     target TEXT,
+    hints TEXT,
     recognized TEXT,
     time INTEGER
   );
 `.split(/;\n\n+/).map((s) => db.prepare(s).run())
-export const logGame = async (target, image, recognized) => {
-  stmt(`INSERT INTO game_record VALUES (?, ?, ?, ?)`)
-    .run(image, target, recognized, Date.now())
+export const logGame = async (target, image, hints, recognized) => {
+  stmt(`INSERT INTO game_record (image, target, hints, recognized, time) VALUES (?, ?, ?, ?, ?)`)
+    .run(image, target, hints, recognized, Date.now())
 }
 
 export const recentSuccessfulGames = async () => {
   const values =
-    stmt(`SELECT image, target, recognized FROM game_record WHERE target = recognized ORDER BY rowid DESC LIMIT 30`)
+    stmt(`SELECT image, target, hints, recognized FROM game_record WHERE target = recognized ORDER BY rowid DESC LIMIT 50`)
       .values()
   return values
 }
 export const recentGames = async () => {
   const values =
-    stmt(`SELECT image, target, recognized FROM game_record ORDER BY rowid DESC LIMIT 50`)
+    stmt(`SELECT image, target, hints, recognized FROM game_record ORDER BY rowid DESC LIMIT 50`)
       .values()
   return values
 }
