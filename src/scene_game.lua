@@ -583,6 +583,7 @@ return function ()
       if bubblesRemaining == 2 then
         slotPullSince = 0
         setTargetWord(targetWords[math.random(#targetWords)])
+        audio.sfx('slot', 0.15)
       end
     end
 
@@ -688,10 +689,11 @@ return function ()
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
     end
-    if state == STATE_FINAL and sinceState >= 720 then
+    if state == STATE_FINAL and sinceState == 720 then
       -- Allow restart
       bubblesRemaining = 3
       btnStick.enabled = true
+      audio.sfx('refill')
     end
 
     particles.update()
@@ -856,7 +858,7 @@ return function ()
     if targetWordText then
       local progress = 1
       if slotPullSince >= 0 then
-        progress = math.max(0, math.min(1, (slotPullSince - 480) / 40))
+        progress = math.max(0, math.min(1, (slotPullSince - 400) / 40))
       end
       love.graphics.setColor(0.53, 0.25, 0.36, progress)
       love.graphics.draw(targetWordText, math.floor(88 - targetWordText:getWidth() / 2), 19)

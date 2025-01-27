@@ -107,6 +107,7 @@ function love.update(dt)
   T = T + dt
   local count = 0
   bgm_update()
+  audio.sfx_update(dt)
   while T > timeStep and count < 4 do
     T = T - timeStep
     count = count + 1
