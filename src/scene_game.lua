@@ -463,6 +463,7 @@ end
 local targetWords = {
   '太阳', '月亮', '云',
   '苹果', '橙子', '香蕉', '水母', '树', '大象', '蘑菇', '花生',
+  '鱼', '汽车',
 }
 
 return function ()
@@ -478,11 +479,24 @@ return function ()
   local texCanvas, imgCanvas
 
   local targetWord, targetWordText
-  local setTargetWord = function (word)
-    -- word = '圆圈'
-    targetWord = word
-    targetWordText = love.graphics.newText(_G['global_font'](14), word)
+  -- Words are picked from a randomly shuffled sequence
+  local targetWordsPtr = #targetWords
+  local randomTargetWord = function ()
+    -- Randomly select a target word
+    if targetWordsPtr == #targetWords then
+      -- Shuffle
+      for i = #targetWords, 2, -1 do
+        local j = math.random(i)
+        targetWords[i], targetWords[j] = targetWords[j], targetWords[i]
+      end
+      targetWordsPtr = 1
+    else
+      targetWordsPtr = targetWordsPtr + 1
+    end
+    targetWord = targetWords[targetWordsPtr]
+    targetWordText = love.graphics.newText(_G['global_font'](14), targetWord)
   end
+
   local previousGuesses
 
   local STATE_INITIAL = 0
@@ -620,7 +634,7 @@ return function ()
       -- Pull the slot at the first bubble release
       if bubblesRemaining == 2 then
         slotPullSince = 0
-        setTargetWord(targetWords[math.random(#targetWords)])
+        randomTargetWord()
         previousGuesses = {}
         audio.sfx('slot', 0.15)
       end
@@ -759,7 +773,7 @@ return function ()
 
   s.key = function (key)
     if key == 'space' then rewardCount = rewardCount + 1 end
-    if key == '1' then setTargetWord(targetWords[math.random(#targetWords)]) end
+    if key == '1' then randomTargetWord() end
   end
 
   local Wc, Hc = 144, 180
