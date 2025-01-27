@@ -9,7 +9,7 @@ while true do
 
   local resp = {}
   http.request {
-    url = 'http://blow.ayu.land/look',
+    url = 'http://127.0.0.1:2111/',
     method = 'POST',
     headers = { ['Content-Length'] = #msg },
     source = ltn12.source.string(msg),

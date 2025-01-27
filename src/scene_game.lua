@@ -48,14 +48,14 @@ end
 
 love.physics.setMeter(1)
 
-local bubbles = function (p)
-  local n = #p
+local createBubbles = function (n)
   local scale = 5
 
   local b = {}
   local world = love.physics.newWorld()
   for i = 1, n do
-    local x, y = p[i][1] * scale, p[i][2] * scale
+    local x = math.cos(i / n * math.pi * 2) * 1
+    local y = math.sin(i / n * math.pi * 2) * 1
 
     local body = love.physics.newBody(world, x, y, 'dynamic')
     local shape = love.physics.newCircleShape(1e-4 * scale)
@@ -114,11 +114,9 @@ local bubbles = function (p)
       joint:setLength(expected_r * scale)
       joint:setFrequency(0.01 / (0.1 + expected_r)^2.1 * 5)
     end
-    print(expected_r, 1 / (0.1 + expected_r)^1.5 * 10)
   end
 
   set_size(0.1)
-  rebuild_joints()
 
   local set_pos = function (i, x, y)
     b[i]:setPosition(x * scale, y * scale)
@@ -238,6 +236,10 @@ local bubbles = function (p)
     world:update(dt)
   end
 
+  local close = function ()
+    world:destroy()
+  end
+
   return {
     set_pos = set_pos,
     get_pos = get_pos,
@@ -250,6 +252,7 @@ local bubbles = function (p)
     rel_ptr = rel_ptr,
     get_ptr = get_ptr,
     update = update,
+    close = close,
   }
 end
 
@@ -427,14 +430,7 @@ return function ()
   local dispScale = 72
 
   local n = 100
-  local p = {}
-  for i = 1, n do
-    p[i] = {
-      math.cos(i / n * math.pi * 2) * 0.1,
-      math.sin(i / n * math.pi * 2) * 0.1,
-    }
-  end
-  local bubbles = bubbles(p)
+  local bubbles
 
   local bubblesRemaining = 3
   local texCanvas, imgCanvas
@@ -539,7 +535,7 @@ return function ()
 
     if state == STATE_INFLATE then
       inflateStart = sinceState
-      bubbles.remove_joints()
+      bubbles = createBubbles(n)
       return true
     end
 
@@ -601,6 +597,7 @@ return function ()
           -- Pop the bubble
           blitCurrentBubbleOntoCanvas()
           particles.pop(bubblePolygon(Xc, Yc, 0, 0), selPaint[1], selPaint[2], selPaint[3])
+          bubbles.close()
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
