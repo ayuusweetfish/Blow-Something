@@ -878,14 +878,6 @@ return function ()
           Xc + px * dispScale,
           Yc + py * dispScale,
           pr * dispScale)
-        local hist, scale = bubbles.get_ptr_trail()
-        for i = 1, #hist do
-          local x, y = unpack(hist[i])
-          love.graphics.circle('fill',
-            Xc + x * dispScale,
-            Yc + y * dispScale,
-            3)
-        end
       end
     end
 
