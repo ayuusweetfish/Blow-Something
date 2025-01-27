@@ -1,5 +1,6 @@
 local draw = require 'draw_utils'
 local button = require 'button'
+local audio = require 'audio'
 
 return function ()
   local s = {}
@@ -16,6 +17,7 @@ return function ()
   end
 
   s.release = function (x, y)
+    audio.sfx('refill')
     replaceScene(scene_game(), transitions['fade'](0.1, 0.1, 0.1))
   end
 

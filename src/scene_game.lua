@@ -483,6 +483,7 @@ return function ()
     targetWord = word
     targetWordText = love.graphics.newText(_G['global_font'](14), word)
   end
+  local previousGuesses
 
   local STATE_INITIAL = 0
   local STATE_INFLATE = 1
@@ -620,6 +621,7 @@ return function ()
       if bubblesRemaining == 2 then
         slotPullSince = 0
         setTargetWord(targetWords[math.random(#targetWords)])
+        previousGuesses = {}
         audio.sfx('slot', 0.15)
       end
     end
@@ -643,7 +645,11 @@ return function ()
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
-          enqueueRequest(targetWord .. '/' .. s)
+          local reqPayload = { targetWord }
+          for i = 1, #previousGuesses do reqPayload[i + 1] = ',' .. previousGuesses[i] end
+          reqPayload[#reqPayload + 1] = '/'
+          reqPayload[#reqPayload + 1] = s
+          enqueueRequest(table.concat(reqPayload))
           -- Thinking
           catThinkFrame = 1
           -- Move on
@@ -740,6 +746,8 @@ return function ()
     if resp ~= nil then
       recognitionResult = resp
       recognitionResultText = love.graphics.newText(_G['global_font'](14), resp)
+      previousGuesses[#previousGuesses + 1] = recognitionResult
+
       catThinkFrame = -1
       catAnswerSeq = math.random(2)
       catAnswerFrame = 1

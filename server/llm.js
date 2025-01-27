@@ -144,7 +144,25 @@ const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
 
 // Application-specific routines
 
-const _askForRecognition = async (image) => {
+const hint = {
+  '太阳': '某个天体',
+  '月亮': '某个天体',
+  '云': '某种气象',
+  '苹果': '某种红色水果',
+  '橙子': '某种橙色水果',
+  '香蕉': '某种黄色水果',
+  '水母': '某种海洋生物',
+  '树': '某种植物',
+  '大象': '某种大型动物',
+  '蘑菇': '某种腐生生物',
+  '花生': '某种坚果',
+}
+
+const _askForRecognition = async (image, targetWord, prevAttempts) => {
+  const prev = (prevAttempts.length > 0 ? `已知错误答案：${prevAttempts.join('、')}。` : '')
+  const ref = (prevAttempts.length >= 2 ? `小提示：你是否觉得它像${hint[targetWord]}？` : '')
+  const userText = `这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？请记住猜测的是常见事物，而绘画形状可能歪斜、不准确，请你猜测原始意图。请将你的猜测以**加粗**输出，仅给出核心词语（名词）即可。${prev}${ref}`
+
 if (0) {
   const [_, text] = await requestLLM_GLM4vPlus([
     { role: 'user', content: [
@@ -155,7 +173,7 @@ if (0) {
         },
       }, {
         type: 'text',
-        text: '这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？只需给出你所猜的词，不要增加额外的内容。',
+        text: userText,
       },
     ] },
   ])
@@ -163,14 +181,19 @@ if (0) {
   const [_, text] = await requestLLM_Gemini15Flash([
     { role: 'user', content: [
       { inlineData: { mimeType: 'image/png', data: encodeBase64(image) } },
-      { text: '这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？只需给出你所猜的词，不要增加额外的内容。' },
+      { text: userText },
     ] },
   ])
-  return text
+  const match = text.match(/\*\*([^*]+)\*\*[^*]*$/)
+  if (!match) {
+    if (text.length <= 8) return text
+    throw new Error('Malformed response from AI')
+  }
+  return match[1]
 }
 export const askForRecognition = retry(_askForRecognition, 3, 'Cannot ask for recognition')
 
 // ======== Test run ======== //
 if (import.meta.main) {
-  console.log(await askForRecognition(await Deno.readFile('peach-1.png')))
+  console.log(await askForRecognition(await Deno.readFile('banana-1.png'), '香蕉', ['腰果']))
 }

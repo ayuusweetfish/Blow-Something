@@ -64,14 +64,16 @@ ${games.map(([image, target, recognized]) => `<tr class='${target === recognized
     const p = u8View.indexOf('/'.charCodeAt(0))
     if (p === -1) throw new ErrorHttpCoded(400, 'Request does not contain target word')
     try {
-      const targetWord = new TextDecoder().decode(u8View.slice(0, p))
+      const words = new TextDecoder().decode(u8View.slice(0, p)).split(',')
+      const targetWord = words[0]
+      const prevAttempts = words.slice(1)
       const img = await sharp(payload.slice(p + 1))
       const meta = await img.metadata()
       if (meta.size > 1048576 || meta.width > 512 || meta.height > 512)
         throw new Error('Image too big')
       const composite = await img.flatten({ background: '#101010' })
       const reencode = await composite.png().toBuffer()
-      const result = await llm.askForRecognition(reencode)
+      const result = await llm.askForRecognition(reencode, targetWord, prevAttempts)
       await db.logGame(targetWord, reencode, result)
       return new Response(result)
     } catch (e) {
