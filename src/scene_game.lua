@@ -496,6 +496,82 @@ local borderSlice9 = function (tex, borderWidth)
   }
 end
 
+local blitFilledPolygon, blitOutline
+
+if love.system.getOS() == 'Web' then
+blitFilledPolygon = function (p, tex, paintR, paintG, paintB, bubbleOpacity, T)
+  local addr = tostring(tex:getPointer()):sub(13) -- 'userdata: 0x'
+  local texW, texH = tex:getDimensions()
+  local pStr = {}
+  for i = 1, #p do
+    pStr[i] = string.format('%.7f %.7f', p[i][1], p[i][2])
+  end
+  print(string.format('+F %s %d %d %.5f %.5f %.5f %.5f %d %s',
+    addr, texW, texH, paintR, paintG, paintB, bubbleOpacity, T, table.concat(pStr, ' ')))
+end
+
+blitOutline = function (p, tex, paintR, paintG, paintB)
+  local addr = tostring(tex:getPointer()):sub(13) -- 'userdata: 0x'
+  local texW, texH = tex:getDimensions()
+  local pStr = {}
+  for i = 1, #p do
+    pStr[i] = string.format('%.7f %.7f', p[i][1], p[i][2])
+  end
+  print(string.format('+O %s %d %d %.5f %.5f %.5f %s',
+    addr, texW, texH, paintR, paintG, paintB, table.concat(pStr, ' ')))
+end
+
+else
+blitFilledPolygon = function (p, tex, paintR, paintG, paintB, bubbleOpacity, T)
+  local texW, texH = tex:getDimensions()
+  local n = #p
+  -- http://alienryderflex.com/polygon_fill/
+  for y = 0, texH - 1 do
+    local xs = {}
+    local x1, y1 = unpack(p[n])
+    for i = 1, n do
+      local x0, y0 = unpack(p[i])
+      if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
+        xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
+      end
+      x1, y1 = x0, y0
+    end
+    table.sort(xs)
+    for i = 1, #xs - 1, 2 do
+      if xs[i] >= texW then break end
+      if xs[i + 1] >= 0 then
+        for x = math.max(0, math.floor(xs[i])), math.min(texW - 1, math.floor(xs[i + 1])) do
+          local a = bubbleOpacity * (0.5 + 0.5 * love.math.noise(x / 50, T / 360, y / 50))
+          tex:setPixel(x, y, paintR, paintG, paintB, a)
+        end
+      end
+    end
+  end
+end
+
+blitOutline = function (p, tex, paintR, paintG, paintB)
+  local texW, texH = tex:getDimensions()
+
+  local n = #p
+  local pts = {}
+  for i = 0, n + 2 do
+    local x, y = unpack(p[(i - 1 + n) % n + 1])
+    pts[i] = { x = x, y = y, knot = (i - 1) / n }
+  end
+  local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
+  for i = 1, 1000 do
+    local t = i / 1000
+    local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
+    -- Distance is less than 1
+    if x0 >= 0 and x0 < texW and y0 >= 0 and y0 < texH then
+      tex:setPixel(math.floor(x0), math.floor(y0), paintR, paintG, paintB, 1)
+    end
+    x1, y1, index = x0, y0, index_new
+  end
+end
+
+end
+
 local targetWords = {
   '太阳', '月亮', '云',
   '苹果', '橙子', '香蕉', '水母', '树', '大象', '蘑菇', '花生',
@@ -612,7 +688,6 @@ return function ()
 
   local Xc = W * 0.5
   local Yc = 156
-  local blitCurrentBubbleOntoCanvas
 
   local particles = particles()
   local bubblePolygon = function (Xc, Yc, WcEx, HcEx)
@@ -696,7 +771,11 @@ return function ()
         -- Is inside?
         if bubbles.check_inside(x1, y1) then
           -- Pop the bubble
-          blitCurrentBubbleOntoCanvas()
+          -- Blit onto canvas
+          blitOutline(bubblePolygon(Wc / 2, Hc / 2, 0, 0),
+            texCanvas, selPaint[1], selPaint[2], selPaint[3])
+          imgCanvas:replacePixels(texCanvas)
+          -- Create particle effect
           particles.pop(bubblePolygon(Xc, Yc, 0, 0), selPaint[1], selPaint[2], selPaint[3])
           bubbles.close()
           -- Encode image and send to server
@@ -828,36 +907,6 @@ return function ()
     if key == '1' then randomTargetWord() end
   end
 
-  local drawBubbleOutline = function (p, tex, WcEx, HcEx, paintR, paintG, paintB)
-    local n = #p
-    local texW = Wc + WcEx * 2
-    local texH = Hc + HcEx * 2
-    local pts = {}
-    tex:setPixel(0, 0, 1, 0.5, 0, 1)
-    print('+' .. tostring(tex:getPointer()))
-    print(tex:getPixel(0, 0))
-    for i = 0, n + 2 do
-      local x, y = unpack(p[(i - 1 + n) % n + 1])
-      pts[i] = { x = x, y = y, knot = (i - 1) / n }
-    end
-    local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
-    for i = 1, 1000 do
-      local t = i / 1000
-      local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
-      -- Distance is less than 1
-      if x0 >= 0 and x0 < texW and y0 >= 0 and y0 < texH then
-        tex:setPixel(math.floor(x0), math.floor(y0), paintR, paintG, paintB, 1)
-      end
-      x1, y1, index = x0, y0, index_new
-    end
-  end
-
-  blitCurrentBubbleOntoCanvas = function ()
-    drawBubbleOutline(bubblePolygon(Wc / 2, Hc / 2, 0, 0),
-      texCanvas, 0, 0, selPaint[1], selPaint[2], selPaint[3])
-    imgCanvas:replacePixels(texCanvas)
-  end
-
   local confetti = draw.get('confetti')
   local confettiW, confettiH = confetti:getDimensions()
   local confettiQuads = {}
@@ -908,30 +957,8 @@ return function ()
       tex:mapPixel(function () return 0, 0, 0, 0 end)
       -- Blit polygon onto texture
       local p = bubblePolygon(Wc / 2, Hc / 2, WcEx, HcEx)
-      -- http://alienryderflex.com/polygon_fill/
-      for y = 0, Hc + HcEx * 2 - 1 do
-        local xs = {}
-        local x1, y1 = unpack(p[n])
-        for i = 1, n do
-          local x0, y0 = unpack(p[i])
-          if (y0 < y and y1 >= y) or (y1 < y and y0 >= y) then
-            xs[#xs + 1] = x0 + (y - y0) / (y1 - y0) * (x1 - x0)
-          end
-          x1, y1 = x0, y0
-        end
-        table.sort(xs)
-        for i = 1, #xs - 1, 2 do
-          if xs[i] >= Wc + WcEx * 2 then break end
-          if xs[i + 1] >= 0 then
-            for x = math.max(0, math.floor(xs[i])), math.min(Wc + WcEx * 2 - 1, math.floor(xs[i + 1])) do
-              local a = bubbleOpacity * (0.5 + 0.5 * love.math.noise(x / 50, T / 360, y / 50))
-              tex:setPixel(x, y, paintR, paintG, paintB, a)
-            end
-          end
-        end
-      end
-      -- Draw lines onto texture
-      drawBubbleOutline(p, tex, HcEx, WcEx, paintR, paintG, paintB)
+      blitFilledPolygon(p, tex, paintR, paintG, paintB, bubbleOpacity, T)
+      blitOutline(p, tex, paintR, paintG, paintB)
 
       img:replacePixels(tex)
       love.graphics.setBlendMode('alpha')

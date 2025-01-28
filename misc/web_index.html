@@ -73,10 +73,18 @@
         arguments: ["./game.love"],
         INITIAL_MEMORY: 134217728,
         print: function (text) {
-          console.log(text)
           if (text[0] === '+') {
-            const addr = parseInt(text.slice(text.indexOf('0x') + 2), 16);
-            console.log(Module.HEAPU8[addr], Module.HEAPU8[addr + 1], Module.HEAPU8[addr + 2]);
+            const op = text[1];
+            const fields = text.substring(3).split(' ');
+            const addr = parseInt(fields[0], 16);
+            const w = parseInt(fields[1]);
+            const h = parseInt(fields[2]);
+            const r = +fields[3];
+            const g = +fields[4];
+            const b = +fields[5];
+            const bubbleOpacity = (op === 'F' ? +fields[6] : 0);
+            const t = (op === 'F' ? +fields[7] : 0);
+            const p = fields.slice(op === 'F' ? 8 : 6);
             Module.HEAPU8[addr] = Module.HEAPU8[addr + 1] = Module.HEAPU8[addr + 2] = 255;
           } else if (text[0] === '^') {
             text = text.substring(1).trim();
