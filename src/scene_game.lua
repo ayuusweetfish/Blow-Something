@@ -725,6 +725,9 @@ return function ()
   local catTailFrame = 1
   local catTailStop = -1
 
+  local updRate = 0
+  local updLast = 0
+
   s.update = function ()
     T = T + 1
     if T % 30 == 0 then
@@ -812,6 +815,12 @@ return function ()
 
       audio.sfx('answer')
     end
+
+    if T % 240 == 0 then
+      local t = love.timer.getTime()
+      updRate = t - updLast
+      updLast = t
+    end
   end
 
   s.key = function (key)
@@ -819,20 +828,24 @@ return function ()
     if key == '1' then randomTargetWord() end
   end
 
-  local drawBubbleOutline = function (tex, WcEx, HcEx, paintR, paintG, paintB)
+  local drawBubbleOutline = function (p, tex, WcEx, HcEx, paintR, paintG, paintB)
+    local n = #p
+    local texW = Wc + WcEx * 2
+    local texH = Hc + HcEx * 2
     local pts = {}
+    tex:setPixel(0, 0, 1, 0.5, 0, 1)
+    print('+' .. tostring(tex:getPointer()))
+    print(tex:getPixel(0, 0))
     for i = 0, n + 2 do
-      local x, y = bubbles.get_pos((i - 1 + n) % n + 1)
-      local x0 = Wc / 2 + x * dispScale + WcEx
-      local y0 = Hc / 2 + y * dispScale + HcEx
-      pts[i] = { x = x0, y = y0, knot = (i - 1) / n }
+      local x, y = unpack(p[(i - 1 + n) % n + 1])
+      pts[i] = { x = x, y = y, knot = (i - 1) / n }
     end
     local x1, y1, index = CatmullRomSpline(0, pts, 0, 0)
     for i = 1, 1000 do
       local t = i / 1000
       local x0, y0, index_new = CatmullRomSpline(t, pts, 0, index)
       -- Distance is less than 1
-      if x0 >= 0 and x0 < Wc + WcEx * 2 and y0 >= 0 and y0 < Hc + HcEx then
+      if x0 >= 0 and x0 < texW and y0 >= 0 and y0 < texH then
         tex:setPixel(math.floor(x0), math.floor(y0), paintR, paintG, paintB, 1)
       end
       x1, y1, index = x0, y0, index_new
@@ -840,7 +853,8 @@ return function ()
   end
 
   blitCurrentBubbleOntoCanvas = function ()
-    drawBubbleOutline(texCanvas, 0, 0, selPaint[1], selPaint[2], selPaint[3])
+    drawBubbleOutline(bubblePolygon(Wc / 2, Hc / 2, 0, 0),
+      texCanvas, 0, 0, selPaint[1], selPaint[2], selPaint[3])
     imgCanvas:replacePixels(texCanvas)
   end
 
@@ -917,7 +931,7 @@ return function ()
         end
       end
       -- Draw lines onto texture
-      drawBubbleOutline(tex, HcEx, WcEx, paintR, paintG, paintB)
+      drawBubbleOutline(p, tex, HcEx, WcEx, paintR, paintG, paintB)
 
       img:replacePixels(tex)
       love.graphics.setBlendMode('alpha')
@@ -1023,6 +1037,9 @@ return function ()
         love.graphics.draw(recognitionResultText, 18, 169)
       end
     end
+
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print(string.format('%d\n%.3f', love.timer.getFPS(), updRate), 20, 20)
   end
 
   s.destroy = function ()
