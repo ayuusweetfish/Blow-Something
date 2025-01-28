@@ -523,6 +523,8 @@ end
 
 else
 blitFilledPolygon = function (p, tex, paintR, paintG, paintB, bubbleOpacity, T)
+  tex:mapPixel(function () return 0, 0, 0, 0 end)
+
   local texW, texH = tex:getDimensions()
   local n = #p
   -- http://alienryderflex.com/polygon_fill/
@@ -953,8 +955,6 @@ return function ()
       if state == STATE_PAINT then
         bubbleOpacity = 0.5 + 0.2 * math.exp(-sinceState / 960)
       end
-      -- Clear texture
-      tex:mapPixel(function () return 0, 0, 0, 0 end)
       -- Blit polygon onto texture
       local p = bubblePolygon(Wc / 2, Hc / 2, WcEx, HcEx)
       blitFilledPolygon(p, tex, paintR, paintG, paintB, bubbleOpacity, T)

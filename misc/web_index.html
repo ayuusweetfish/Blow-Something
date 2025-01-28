@@ -69,6 +69,12 @@
         }
       }, false);
 
+      var polygonRast;
+      fetch('polygon_rast.wasm')
+        .then((resp) => resp.arrayBuffer())
+        .then((buf) => WebAssembly.instantiate(buf))
+        .then((result) => (polygonRast = result.instance.exports));
+
       var Module = {
         arguments: ["./game.love"],
         INITIAL_MEMORY: 134217728,
@@ -85,7 +91,14 @@
             const bubbleOpacity = (op === 'F' ? +fields[6] : 0);
             const t = (op === 'F' ? +fields[7] : 0);
             const p = fields.slice(op === 'F' ? 8 : 6);
-            Module.HEAPU8[addr] = Module.HEAPU8[addr + 1] = Module.HEAPU8[addr + 2] = 255;
+            const pixelBufPtr = polygonRast.get_pix_buf();
+            new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4)
+              .set(Module.HEAPU8.slice(addr, w * h * 4));
+            polygonRast.rasterize_outline(w, h, p.length / 2);
+            Module.HEAPU8.set(
+              new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4),
+              addr
+            );
           } else if (text[0] === '^') {
             text = text.substring(1).trim();
             var splitAt = text.indexOf('^');
