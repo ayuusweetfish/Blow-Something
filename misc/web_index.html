@@ -91,10 +91,16 @@
             const bubbleOpacity = (op === 'F' ? +fields[6] : 0);
             const t = (op === 'F' ? +fields[7] : 0);
             const p = fields.slice(op === 'F' ? 8 : 6);
+            const ptBufPtr = polygonRast.get_pt_buf();
+            new Float32Array(polygonRast.memory.buffer, ptBufPtr, p.length)
+              .set(new Float32Array(p));
             const pixelBufPtr = polygonRast.get_pix_buf();
             new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4)
-              .set(Module.HEAPU8.slice(addr, w * h * 4));
-            polygonRast.rasterize_outline(w, h, p.length / 2);
+              .set(Module.HEAPU8.slice(addr, addr + w * h * 4));
+            if (op === 'F')
+              polygonRast.rasterize_fill(w, h, p.length / 2, r, g, b, bubbleOpacity, t);
+            else
+              polygonRast.rasterize_outline(w, h, p.length / 2, r, g, b);
             Module.HEAPU8.set(
               new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4),
               addr
