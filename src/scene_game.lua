@@ -806,9 +806,6 @@ return function ()
   local catTailFrame = 1
   local catTailStop = -1
 
-  local updRate = 0
-  local updLast = 0
-
   s.update = function ()
     T = T + 1
     if T % 30 == 0 then
@@ -895,12 +892,6 @@ return function ()
       catAnswerSpeechBubble = math.random(#speechBubbles)
 
       audio.sfx('answer')
-    end
-
-    if T % 240 == 0 then
-      local t = love.timer.getTime()
-      updRate = t - updLast
-      updLast = t
     end
   end
 
@@ -1066,7 +1057,6 @@ return function ()
     end
 
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(string.format('%d\n%.3f', love.timer.getFPS(), updRate), 20, 20)
   end
 
   s.destroy = function ()
