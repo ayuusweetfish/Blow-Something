@@ -607,7 +607,7 @@ return function ()
       targetWordsPtr = targetWordsPtr + 1
     end
     targetWord = targetWords[targetWordsPtr]
-    targetWordText = love.graphics.newText(_G['global_font'](14), targetWord)
+    targetWordText = love.graphics.newText(_G['global_font'](15), targetWord)
   end
 
   local previousGuesses
@@ -883,7 +883,7 @@ return function ()
     local resp = fetchResponse()
     if resp ~= nil then
       recognitionResult = resp
-      recognitionResultText = love.graphics.newText(_G['global_font'](14), resp)
+      recognitionResultText = love.graphics.newText(_G['global_font'](15), resp)
       previousGuesses[#previousGuesses + 1] = recognitionResult
 
       catThinkFrame = -1
