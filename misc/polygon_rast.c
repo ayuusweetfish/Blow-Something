@@ -45,8 +45,8 @@ EMSCRIPTEN_KEEPALIVE void rasterize_fill(int w, int h, int n,
     for (int i = 0; i < n_xs - 1; i += 2) {
       if (xs[i] >= w) break;
       if (xs[i + 1] >= 0) {
-        int x_start = (xs[i] < 0 ? 0 : xs[i]);
-        int x_end = (xs[i + 1] > w - 1 ? w - 1 : xs[i + 1]);
+        int x_start = (xs[i] < 0 ? 0 : (int)(xs[i] + 0.5f));
+        int x_end = (xs[i + 1] > w - 1 ? w - 1 : (int)(xs[i + 1] + 0.5f));
         for (int x = x_start; x <= x_end; x++) {
           float a = opacity * (0.85f + 0.15f * snoise3(x / 100.f, t / 720.f, y / 100.f));
           pix_buf[(y * w + x) * 4 + 0] = (int)(r * 255);
