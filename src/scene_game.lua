@@ -406,16 +406,16 @@ local particles = function ()
           local xMax = math.min(W, xs[i + 1])
           local count = math.ceil((xMax - xMin) / xDensity)
           for t = 1, count do
-            local px = xMin + math.random() * (xMax - xMin)
-            local py = y + (math.random() - 0.5) * yStep
-            local vScale = 0.2 + math.random() * 0.2
+            local px = xMin + love.math.random() * (xMax - xMin)
+            local py = y + (love.math.random() - 0.5) * yStep
+            local vScale = 0.2 + love.math.random() * 0.2
             ps[#ps + 1] = {
               x0 = px, y0 = py,
               x = px, y = py,
               vx = (px - xCen) * vScale,
               vy = (py - yCen) * vScale,
               r = r, g = g, b = b, a = 1,
-              t = 0, ttl = 120 + math.random() * 120,
+              t = 0, ttl = 120 + love.math.random() * 120,
             }
           end
         end
@@ -599,7 +599,7 @@ return function ()
     if targetWordsPtr == #targetWords then
       -- Shuffle
       for i = #targetWords, 2, -1 do
-        local j = math.random(i)
+        local j = love.math.random(i)
         targetWords[i], targetWords[j] = targetWords[j], targetWords[i]
       end
       targetWordsPtr = 1
@@ -816,9 +816,9 @@ return function ()
       else
         catTailFrame = catTailFrame % 8 + 1
         if catTailFrame == 1 or catTailFrame == 5 then
-          if math.random(3) ~= 0 then
+          if love.math.random(3) ~= 0 then
             -- Stop
-            catTailStop = 10 + math.random(20)
+            catTailStop = 10 + love.math.random(20)
           end
         end
       end
@@ -887,9 +887,9 @@ return function ()
       previousGuesses[#previousGuesses + 1] = recognitionResult
 
       catThinkFrame = -1
-      catAnswerSeq = math.random(2)
+      catAnswerSeq = love.math.random(2)
       catAnswerFrame = 1
-      catAnswerSpeechBubble = math.random(#speechBubbles)
+      catAnswerSpeechBubble = love.math.random(#speechBubbles)
 
       audio.sfx('answer')
     end
