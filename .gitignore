@@ -1,3 +1,5 @@
 /love-11.5-win64
 /backups/
 !/backups/highlight_test/
+/misc/lovejs-env/node_modules/
+/release/
