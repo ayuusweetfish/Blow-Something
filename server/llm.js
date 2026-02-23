@@ -3,25 +3,28 @@ import { encodeBase64 } from 'jsr:@std/encoding/base64'
 
 const loggedFetchJSON = async (url, options) => {
   const t0 = Date.now()
-  const req = await fetch(url, options)
-  const respText = await req.text()
+  const resp = await fetch(url, options)
+  const respText = await resp.text()
   await logNetwork(url, options.body, respText, Date.now() - t0)
   console.log(url, respText)
   return JSON.parse(respText)
 }
 
-const requestLLM_OpenAI = (endpoint, model, temperature, key) => async (messages, isStreaming) => {
+const getKey = (name) => () => Deno.env.get(name) || prompt(`API key (${name}):`)
+
+const requestLLM_OpenAI = (endpoint, model, temperature, maxTokens, keyFn) => async (messages, isStreaming) => {
   const options = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + key,
+      'Authorization': 'Bearer ' + keyFn(),
     },
     body: JSON.stringify({
       model: model,
       messages,
-      // max_tokens: 8000,  // GLM-4V does not accept `max_tokens`
       temperature: temperature,
+      max_tokens: maxTokens,
+      enable_thinking: false, // Defaults to true for Qwen3.5 > <
       stream: (isStreaming ? true : undefined),
     }),
   }
@@ -75,10 +78,10 @@ const requestLLM_OpenAI = (endpoint, model, temperature, key) => async (messages
   }
 }
 
-const requestLLM_Google = (model, temperature, key) => async (messages) => {
+const requestLLM_Google = (model, temperature, keyFn) => async (messages) => {
   // Ref: https://ai.google.dev/api/generate-content#v1beta.models.generateContent
   const resp = await loggedFetchJSON(
-    'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key,
+    'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + keyFn(),
     {
       method: 'POST',
       headers: {
@@ -114,20 +117,27 @@ const requestLLM_Google = (model, temperature, key) => async (messages) => {
 }
 
 const requestLLM_GLM4vPlus = requestLLM_OpenAI(
-  'https://open.bigmodel.cn/api/paas/v4/chat/completions', 'glm-4v-plus-0111', 1.0,
-  Deno.env.get('API_KEY_ZHIPU') || prompt('API key (Zhipu):')
+  'https://open.bigmodel.cn/api/paas/v4/chat/completions', 'glm-4v-plus-0111', 1.0, undefined,
+  getKey('API_KEY_ZHIPU'),
 )
 const requestLLM_GLM4vFlash = requestLLM_OpenAI(
-  'https://open.bigmodel.cn/api/paas/v4/chat/completions', 'glm-4v-flash', 1.0,
-  Deno.env.get('API_KEY_ZHIPU') || prompt('API key (Zhipu):')
+  'https://open.bigmodel.cn/api/paas/v4/chat/completions', 'glm-4v-flash', 1.0, undefined,
+  getKey('API_KEY_ZHIPU'),
 )
 const requestLLM_Gemini15Flash = requestLLM_Google(
   'gemini-1.5-flash', 1.0,
-  Deno.env.get('API_KEY_GOOGLE') || prompt('API key (Google):')
+  getKey('API_KEY_GOOGLE'),
 )
 const requestLLM_Gemini20FlashExp = requestLLM_Google(
   'gemini-2.0-flash-exp', 1.0,
-  Deno.env.get('API_KEY_GOOGLE') || prompt('API key (Google):')
+  getKey('API_KEY_GOOGLE'),
+)
+
+// https://bailian.console.aliyun.com/cn-beijing/?spm=a2ty02.33053938.resourceCenter.1.193c74a1mW6rl9&tab=api#/api/?type=model&url=3016807
+const requestLLM_Qwen35Plus = requestLLM_OpenAI(
+  'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+  'qwen3.5-plus', 0.7 /* Default */, 512,
+  getKey('API_KEY_ALIYUN'),
 )
 
 const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
@@ -135,7 +145,7 @@ const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
     try {
       return await fn(...args)
     } catch (e) {
-      console.log(`${errorMsgPrefix}: ${e}`)
+      console.log(`${errorMsgPrefix}:`, e)
       if (i === attempts - 1) throw e
       continue
     }
@@ -187,12 +197,30 @@ if (0) {
     ] },
   ])
 }
+
+if (0) {
   const [_, text] = await requestLLM_Gemini15Flash([
     { role: 'user', content: [
       { inlineData: { mimeType: 'image/png', data: encodeBase64(image) } },
       { text: userText },
     ] },
   ])
+}
+
+  const [_, text] = await requestLLM_Qwen35Plus([
+    { role: 'user', content: [
+      {
+        type: 'text',
+        text: userText,
+      }, {
+        type: 'image_url',
+        image_url: {
+          url: 'data:image/png;base64,' + encodeBase64(image),
+        },
+      },
+    ] },
+  ])
+
   const match = text.match(/\*\*([^*]+)\*\*[^*]*$/)
   if (!match) {
     if (text.length <= 8) return text
