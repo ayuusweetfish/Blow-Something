@@ -1,6 +1,6 @@
-import { Database } from 'jsr:@db/sqlite@0.12'
+import { DatabaseSync } from 'node:sqlite'
 
-const db = new Database('bubble.db')
+const db = new DatabaseSync('bubble.db')
 
 const cachedStmts = {}
 const stmt = (s) => (cachedStmts[s] || (cachedStmts[s] = db.prepare(s)))
@@ -38,12 +38,14 @@ export const logGame = async (target, image, hints, recognized) => {
 export const recentSuccessfulGames = async () => {
   const values =
     stmt(`SELECT image, target, hints, recognized FROM game_record WHERE target = recognized ORDER BY rowid DESC LIMIT 50`)
-      .values()
+      .all()
+      .map((rowFields) => [rowFields['image'], rowFields['target'], rowFields['hints'], rowFields['recognized']])
   return values
 }
 export const recentGames = async () => {
   const values =
     stmt(`SELECT image, target, hints, recognized FROM game_record ORDER BY rowid DESC LIMIT 50`)
-      .values()
+      .all()
+      .map((rowFields) => [rowFields['image'], rowFields['target'], rowFields['hints'], rowFields['recognized']])
   return values
 }
