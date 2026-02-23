@@ -154,32 +154,36 @@ const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
 
 // Application-specific routines
 
-const hint = {
-  '太阳': '某个天体',
-  '月亮': '某个天体',
-  '云': '某种气象',
-  '苹果': '某种红色水果',
-  '橙子': '某种橙色水果',
-  '香蕉': '某种黄色水果',
-  '水母': '某种海洋生物',
-  '树': '某类植物',
-  '大象': '某种大型动物',
-  '蘑菇': '某种腐生生物',
-  '花生': '某种坚果',
-  '鱼': '某种水生生物',
-  '汽车': '某种交通工具',
-}
+const words = [
+  { word: '太阳', hint: '某个天体' },
+  { word: '月亮/月球', hint: '某个天体' },
+  { word: '云/云朵', hint: '某种气象' },
+  { word: '苹果', hint: '某种水果' },
+  { word: '橙子/橘子/桔子', hint: '某种水果' },
+  { word: '香蕉', hint: '某种水果' },
+  { word: '水母', hint: '某种水生生物' },
+  { word: '树', hint: '某类植物' },
+  { word: '大象', hint: '某种大型动物' },
+  { word: '蘑菇', hint: '某种生物' },
+  { word: '花生', hint: '某种坚果' },
+  { word: '鱼', hint: '某种水生动物' },
+  { word: '汽车', hint: '某种交通工具' },
+]
+const wordLookup = Object.fromEntries(words.flatMap((o) => {
+  const { word, hint } = o
+  return word.split('/').map((w) => [ w, o ])
+}))
 
 // For logging and debugging
 export const getHint = (targetWord, prevAttempts) => {
   if (prevAttempts.length === 0) return ''
   return prevAttempts.map((s) => `${s}×`).join(' ') +
-    (prevAttempts.length >= 2 ? ` ${hint[targetWord]}?` : '')
+    (prevAttempts.length >= 2 ? ` ${wordLookup[targetWord].hint}?` : '')
 }
 
 const _askForRecognition = async (image, targetWord, prevAttempts) => {
   const prev = (prevAttempts.length > 0 ? `已知错误答案：${prevAttempts.join('、')}。` : '')
-  const ref = (prevAttempts.length >= 2 ? `小提示：你是否觉得它像${hint[targetWord]}？` : '')
+  const ref = (prevAttempts.length >= 2 ? `小提示：你是否觉得它像${wordLookup[targetWord].hint}？` : '')
   const userText = `这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？请记住猜测的是常见事物，而绘画形状可能歪斜、不准确，请你猜测原始意图。请将你的猜测以**加粗**输出，仅给出核心词语（名词）即可。${prev}${ref}`
 
   // XXX: `encodeBase64` (@std/encoding@1.0.10) drains `Buffer` but not `Uint8Array`???

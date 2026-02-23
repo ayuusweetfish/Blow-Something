@@ -575,10 +575,17 @@ end
 end
 
 local targetWords = {
-  '太阳', '月亮', '云',
-  '苹果', '橙子', '香蕉', '水母', '树', '大象', '蘑菇', '花生',
+  '太阳', '月亮/月球', '云/云朵',
+  '苹果', '橙子/橘子/桔子', '香蕉', '水母', '树', '大象', '蘑菇', '花生',
   '鱼', '汽车',
 }
+for i = 1, #targetWords do
+  local a = {}
+  for s in targetWords[i]:gmatch('[^/]+') do
+    a[#a + 1] = s
+  end
+  targetWords[i] = a
+end
 
 return function ()
   local s = {}
@@ -607,7 +614,7 @@ return function ()
       targetWordsPtr = targetWordsPtr + 1
     end
     targetWord = targetWords[targetWordsPtr]
-    targetWordText = love.graphics.newText(_G['global_font'](15), targetWord)
+    targetWordText = love.graphics.newText(_G['global_font'](15), targetWord[1])
   end
 
   local previousGuesses
@@ -783,7 +790,7 @@ return function ()
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
-          local reqPayload = { targetWord }
+          local reqPayload = { targetWord[1] }
           for i = 1, #previousGuesses do reqPayload[i + 1] = ',' .. previousGuesses[i] end
           reqPayload[#reqPayload + 1] = '/'
           reqPayload[#reqPayload + 1] = s
@@ -832,7 +839,14 @@ return function ()
         catAnswerFrame = catAnswerFrame + 1
 
         -- Is correct?
-        if catAnswerFrame >= 12 and recognitionResult == targetWord then
+        local guessedCorrect = false
+        for i = 1, #targetWord do
+          if recognitionResult == targetWord[i] then
+            guessedCorrect = true
+            break
+          end
+        end
+        if catAnswerFrame >= 12 and guessedCorrect then
           catAnswerSeq, catAnswerFrame = -1, -1
           catBingoFrame = 1
           catBingoSince = 0
@@ -841,7 +855,7 @@ return function ()
           btnStick.enabled = false
           state, sinceState = STATE_FINAL, 0
           audio.sfx('bingo')
-        elseif catAnswerFrame >= 24 and recognitionResult ~= targetWord then
+        elseif catAnswerFrame >= 24 and not guessedCorrect then
           catAnswerSeq, catAnswerFrame = -1, -1
           if state == STATE_INITIAL and bubblesRemaining == 0 then
             -- Finalise, regardless
