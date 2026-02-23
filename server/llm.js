@@ -182,6 +182,11 @@ const _askForRecognition = async (image, targetWord, prevAttempts) => {
   const ref = (prevAttempts.length >= 2 ? `小提示：你是否觉得它像${hint[targetWord]}？` : '')
   const userText = `这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？请记住猜测的是常见事物，而绘画形状可能歪斜、不准确，请你猜测原始意图。请将你的猜测以**加粗**输出，仅给出核心词语（名词）即可。${prev}${ref}`
 
+  // XXX: `encodeBase64` (@std/encoding@1.0.10) drains `Buffer` but not `Uint8Array`???
+  // Clone for now to work around
+  const imageCloned = new Uint8Array(image)
+  image = imageCloned
+
 if (0) {
   const [_, text] = await requestLLM_GLM4vPlus([
     { role: 'user', content: [
