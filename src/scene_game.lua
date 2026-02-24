@@ -600,18 +600,22 @@ for i = 1, #targetWords do
   end
 end
 
-return function (lang)
+return function ()
   local s = {}
   local W, H = W, H
 
   local dispScale = 72
 
-  local n = 100
+  local btnLang = _G['btnLang']() -- See `main.lua`
+  btnLang.enabled = false   -- Enable later, when the word appears
+
+  local n = 100   -- Number of points on the bubble
   local bubbles
 
   local bubblesRemaining = 3
 
-  local targetWord, targetWordText
+  local targetWord
+  local targetWordText, targetWordTextStr
   -- Words are picked from a randomly shuffled sequence
   local targetWordsPtr = #targetWords
   local randomTargetWord = function ()
@@ -627,7 +631,6 @@ return function (lang)
       targetWordsPtr = targetWordsPtr + 1
     end
     targetWord = targetWords[targetWordsPtr]
-    targetWordText = love.graphics.newText(_G['global_font'](15), targetWord[lang][1])
   end
 
   local previousGuesses
@@ -660,7 +663,8 @@ return function (lang)
       texCanvas:mapPixel(function () return 0, 0, 0, 0 end)
       imgCanvas:replacePixels(texCanvas)
       -- Reset target word (will be drawn after the first bubble is released)
-      targetWord, targetWordText = nil, nil
+      targetWord = nil
+      targetWordText, targetWordTextStr = nil, nil
     end
 
     bubblesRemaining = bubblesRemaining - 1
@@ -727,6 +731,8 @@ return function (lang)
   local recognitionResultText
 
   s.press = function (x, y)
+    if btnLang.press(x, y) then return true end
+
     -- Check the buttons first, in case the player changes colour before inflation
     for i = 1, #buttons do if buttons[i].press(x, y) then return true end end
 
@@ -750,6 +756,8 @@ return function (lang)
   end
 
   s.move = function (x, y)
+    if btnLang.move(x, y) then return true end
+
     for i = 1, #buttons do if buttons[i].move(x, y) then return true end end
     local x1 = (x - Xc) / dispScale
     local y1 = (y - Yc) / dispScale
@@ -768,6 +776,8 @@ return function (lang)
   local slotPullSince = -1
 
   s.release = function (x, y)
+    if btnLang.release(x, y) then return true end
+
     if state == STATE_INFLATE and inflateStart then
       state, sinceState = STATE_PAINT, 0
       bubbles.rebuild_joints()
@@ -776,6 +786,7 @@ return function (lang)
         slotPullSince = 0
         randomTargetWord()
         previousGuesses = {}
+        btnLang.enabled = true
         audio.sfx('slot', 0.15)
       end
     end
@@ -800,10 +811,12 @@ return function (lang)
           -- Create particle effect
           particles.pop(bubblePolygon(Xc, Yc, 0, 0), selPaint[1], selPaint[2], selPaint[3])
           bubbles.close()
+          -- Disable & hide language button
+          btnLang.enabled = false
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
-          local reqPayload = { targetWord[lang][1] }
+          local reqPayload = { targetWord[_G['lang']][1] }
           for i = 1, #previousGuesses do reqPayload[i + 1] = ',' .. previousGuesses[i] end
           reqPayload[#reqPayload + 1] = '/'
           reqPayload[#reqPayload + 1] = s
@@ -853,8 +866,8 @@ return function (lang)
 
         -- Is correct?
         local guessedCorrect = false
-        for i = 1, #targetWord do
-          if recognitionResult == targetWord[lang][i] then
+        for _, w in ipairs(targetWord[_G['lang']]) do
+          if recognitionResult == w then
             guessedCorrect = true
             break
           end
@@ -1009,7 +1022,12 @@ return function (lang)
     end
     draw.img('slot_' .. tostring(slotFrame), 52, 10)
 
-    if targetWordText then
+    if targetWord then
+      local s = targetWord[_G['lang']][1]
+      if targetWordTextStr ~= s then
+        targetWordText = love.graphics.newText(_G['global_font'](15), s)
+        targetWordTextStr = s
+      end
       local progress = 1
       if slotPullSince >= 0 then
         progress = math.max(0, math.min(1, (slotPullSince - 400) / 40))
@@ -1082,6 +1100,8 @@ return function (lang)
         love.graphics.draw(recognitionResultText, 18, 169)
       end
     end
+
+    btnLang.draw()
 
     love.graphics.setColor(1, 1, 1)
   end

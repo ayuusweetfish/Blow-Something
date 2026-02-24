@@ -64,6 +64,41 @@ bgm:play()
 require 'draw_utils'  -- Load
 print('*finish')
 
+-- Language button
+
+local langNames = {'zh', 'en'}
+local langIndex = 1
+_G['lang'] = langNames[langIndex]
+
+local draw = require 'draw_utils'
+local button = require 'button'
+_G['btnLang'] = function ()
+  local btnLang
+  btnLang = button(draw.get('btn_lang_' .. langNames[langIndex]), function ()
+    langIndex = langIndex % 2 + 1
+    btnLang.drawable = draw.get('btn_lang_' .. langNames[langIndex])
+    _G['lang'] = langNames[langIndex]
+    audio.sfx('bubble_pop')
+  end)
+  btnLang.x = 25
+  btnLang.y = 20
+
+  local drawOrig = btnLang.draw
+  btnLang.draw = function ()
+    if not btnLang.enabled then return end
+    if btnLang.inside then
+      love.graphics.setColor(0.6, 0.6, 0.6)
+    else
+      love.graphics.setColor(1, 1, 1)
+    end
+    drawOrig()
+  end
+
+  return btnLang
+end
+
+-- Scenes
+
 _G['scene_intro'] = require 'scene_intro'
 _G['scene_game'] = require 'scene_game'
 
