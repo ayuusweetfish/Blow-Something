@@ -35,17 +35,36 @@ export const logGame = async (target, image, hints, recognized) => {
     .run(image, target, hints, recognized, Date.now())
 }
 
+import { wordBingo } from './words.js'
+
 export const recentSuccessfulGames = async () => {
-  const values =
-    stmt(`SELECT image, target, hints, recognized FROM game_record WHERE target = recognized ORDER BY rowid DESC LIMIT 50`)
+  // Do it once and forget about the complex world ^ ^
+  const rowids =
+    stmt(`SELECT rowid, target, recognized FROM game_record ORDER BY rowid DESC LIMIT 500`)
       .all()
-      .map((rowFields) => [rowFields['image'], rowFields['target'], rowFields['hints'], rowFields['recognized']])
+      .flatMap((rowFields) =>
+        wordBingo(rowFields['target'], rowFields['recognized']) ?
+        rowFields['rowid'] : []
+      )
+      .slice(0, 50)
+  const values =
+    stmt(`SELECT image, target, hints, recognized FROM game_record WHERE rowid IN (${rowids.join(',')}) ORDER BY rowid DESC`)
+      .all()
+      .map((rowFields) => [
+        rowFields['image'], rowFields['target'],
+        rowFields['hints'], rowFields['recognized'],
+        wordBingo(rowFields['target'], rowFields['recognized'])
+      ])
   return values
 }
 export const recentGames = async () => {
   const values =
     stmt(`SELECT image, target, hints, recognized FROM game_record ORDER BY rowid DESC LIMIT 50`)
       .all()
-      .map((rowFields) => [rowFields['image'], rowFields['target'], rowFields['hints'], rowFields['recognized']])
+      .map((rowFields) => [
+        rowFields['image'], rowFields['target'],
+        rowFields['hints'], rowFields['recognized'],
+        wordBingo(rowFields['target'], rowFields['recognized'])
+      ])
   return values
 }

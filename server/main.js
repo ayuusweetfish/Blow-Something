@@ -40,7 +40,7 @@ const serveReq = async (req) => {
 </head><body>
 <table>
 <tr><th></th><th>猜</th><th>目标</th><th>提示</th></tr>
-${games.map(([image, target, hints, recognized]) => `<tr class='${target === recognized ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${recognized}</td><td>${target}</td><td>${hints}</td></tr>`).join('\n')}
+${games.map(([image, target, hints, recognized, bingo]) => `<tr class='${bingo ? 'bingo' : 'miss'}''><td><img src='data:image/png;base64,${encodeBase64(image)}'></td><td>${recognized}</td><td>${target}</td><td>${hints}</td></tr>`).join('\n')}
 </table>
 </body></html>
 `
