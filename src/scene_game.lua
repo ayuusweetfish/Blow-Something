@@ -575,19 +575,32 @@ end
 end
 
 local targetWords = {
-  '太阳', '月亮/月球', '云/云朵',
-  '苹果', '橙子/橘子/桔子', '香蕉', '水母', '树', '大象', '蘑菇', '花生',
-  '鱼', '汽车',
+  {zh = '太阳', en = 'Sun'},
+  {zh = '月亮/月球', en = 'Moon'},
+  {zh = '云/云朵', en = 'Cloud/Clouds'},
+  {zh = '苹果', en = 'Apple'},
+  {zh = '橙子/橘子/桔子', en = 'Orange'},
+  {zh = '香蕉', en = 'Banana'},
+  {zh = '水母', en = 'Jellyfish'},
+  {zh = '树', en = 'Tree'},
+  {zh = '大象', en = 'Elephant'},
+  {zh = '蘑菇', en = 'Mushroom'},
+  {zh = '花生', en = 'Peanut/Peanuts'},
+  {zh = '鱼', en = 'Fish'},
+  {zh = '汽车', en = 'Car'},
 }
+
 for i = 1, #targetWords do
-  local a = {}
-  for s in targetWords[i]:gmatch('[^/]+') do
-    a[#a + 1] = s
+  for _, lang in ipairs({'zh', 'en'}) do
+    local a = {}
+    for s in targetWords[i][lang]:gmatch('[^/]+') do
+      a[#a + 1] = s
+    end
+    targetWords[i][lang] = a
   end
-  targetWords[i] = a
 end
 
-return function ()
+return function (lang)
   local s = {}
   local W, H = W, H
 
@@ -614,7 +627,7 @@ return function ()
       targetWordsPtr = targetWordsPtr + 1
     end
     targetWord = targetWords[targetWordsPtr]
-    targetWordText = love.graphics.newText(_G['global_font'](15), targetWord[1])
+    targetWordText = love.graphics.newText(_G['global_font'](15), targetWord[lang][1])
   end
 
   local previousGuesses
@@ -790,7 +803,7 @@ return function ()
           -- Encode image and send to server
           local imageFileData = texCanvas:encode('png')
           local s = imageFileData:getString()
-          local reqPayload = { targetWord[1] }
+          local reqPayload = { targetWord[lang][1] }
           for i = 1, #previousGuesses do reqPayload[i + 1] = ',' .. previousGuesses[i] end
           reqPayload[#reqPayload + 1] = '/'
           reqPayload[#reqPayload + 1] = s
@@ -841,7 +854,7 @@ return function ()
         -- Is correct?
         local guessedCorrect = false
         for i = 1, #targetWord do
-          if recognitionResult == targetWord[i] then
+          if recognitionResult == targetWord[lang][i] then
             guessedCorrect = true
             break
           end
