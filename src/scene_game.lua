@@ -579,7 +579,7 @@ local targetWords = {
   {zh = '月亮/月球', en = 'Moon'},
   {zh = '云/云朵', en = 'Cloud/Clouds'},
   {zh = '苹果', en = 'Apple'},
-  {zh = '橙子/橘子/桔子', en = 'Orange'},
+  {zh = '橙子/橘子/桔子', en = 'Orange/Tangerine/Mandarin'},
   {zh = '香蕉', en = 'Banana'},
   {zh = '水母', en = 'Jellyfish'},
   {zh = '树', en = 'Tree'},

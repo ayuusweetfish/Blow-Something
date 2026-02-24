@@ -9,7 +9,9 @@ while true do
 
   local resp = {}
   http.request {
-    url = 'http://blow.ayu.land/look',
+    url = os.getenv('LOCAL_SERVER') == '1'
+      and 'http://127.0.0.1:25126/look'
+      or 'http://blow.ayu.land/look',
     method = 'POST',
     headers = { ['Content-Length'] = #msg },
     source = ltn12.source.string(msg),

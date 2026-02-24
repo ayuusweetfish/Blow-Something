@@ -155,23 +155,25 @@ const retry = (fn, attempts, errorMsgPrefix) => async (...args) => {
 // Application-specific routines
 
 const words = [
-  { word: '太阳', hint: '某个天体' },
-  { word: '月亮/月球', hint: '某个天体' },
-  { word: '云/云朵', hint: '某种气象' },
-  { word: '苹果', hint: '某种水果' },
-  { word: '橙子/橘子/桔子', hint: '某种水果' },
-  { word: '香蕉', hint: '某种水果' },
-  { word: '水母', hint: '某种水生生物' },
-  { word: '树', hint: '某类植物' },
-  { word: '大象', hint: '某种大型动物' },
-  { word: '蘑菇', hint: '某种生物' },
-  { word: '花生', hint: '某种坚果' },
-  { word: '鱼', hint: '某种水生动物' },
-  { word: '汽车', hint: '某种交通工具' },
+  { word: { zh: '太阳', en: 'Sun' }, hint: '某个天体' },
+  { word: { zh: '月亮/月球', en: 'Moon' }, hint: '某个天体' },
+  { word: { zh: '云/云朵', en: 'Cloud/Clouds' }, hint: '某种气象' },
+  { word: { zh: '苹果', en: 'Apple' }, hint: '某种水果' },
+  { word: { zh: '橙子/橘子/桔子', en: 'Orange/Tangerine/Mandarin' }, hint: '某种水果' },
+  { word: { zh: '香蕉', en: 'Banana' }, hint: '某种水果' },
+  { word: { zh: '水母', en: 'Jellyfish' }, hint: '某种水生生物' },
+  { word: { zh: '树', en: 'Tree' }, hint: '某类植物' },
+  { word: { zh: '大象', en: 'Elephant' }, hint: '某种大型动物' },
+  { word: { zh: '蘑菇', en: 'Mushroom' }, hint: '某种生物' },
+  { word: { zh: '花生', en: 'Peanut/Peanuts' }, hint: '某种坚果' },
+  { word: { zh: '鱼', en: 'Fish' }, hint: '某种水生动物' },
+  { word: { zh: '汽车', en: 'Car' }, hint: '某种交通工具' },
 ]
 const wordLookup = Object.fromEntries(words.flatMap((o) => {
   const { word, hint } = o
-  return word.split('/').map((w) => [ w, o ])
+  return Object.entries(word).flatMap(
+    ([lang, wordForLang]) => wordForLang.split('/').map((w) => [ w, { hint, lang, origEntry: o } ])
+  )
 }))
 
 // For logging and debugging
@@ -182,9 +184,12 @@ export const getHint = (targetWord, prevAttempts) => {
 }
 
 const _askForRecognition = async (image, targetWord, prevAttempts) => {
+  const lang = wordLookup[targetWord].lang
+
   const prev = (prevAttempts.length > 0 ? `已知错误答案：${prevAttempts.join('、')}。` : '')
   const ref = (prevAttempts.length >= 2 ? `小提示：你是否觉得它像${wordLookup[targetWord].hint}？` : '')
-  const userText = `这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？请记住猜测的是常见事物，而绘画形状可能歪斜、不准确，请你猜测原始意图。请将你的猜测以**加粗**输出，仅给出核心词语（名词）即可。${prev}${ref}`
+  const langReq = (wordLookup[targetWord].lang !== 'zh' ? `请用**英语单词**回答。` : '')
+  const userText = `这张图描绘了一种人们所熟知的事物（植物、动物、自然物体或日常生活中常见的物品）。它是尝试用细绳绘制出的图案外形，所以轮廓可能不准确。你可以尽力猜猜原本想画的是什么吗？请记住猜测的是常见事物，而绘画形状可能歪斜、不准确，请你猜测原始意图。请将你的猜测以**加粗**输出，仅给出核心词语（名词）即可。${langReq}${prev}${ref}`
 
   // XXX: `encodeBase64` (@std/encoding@1.0.10) drains `Buffer` but not `Uint8Array`???
   // Clone for now to work around
@@ -235,7 +240,12 @@ if (0) {
     if (text.length <= 8) return text
     throw new Error('Malformed response from AI')
   }
-  return match[1]
+  let responseWord = match[1]
+
+  if (lang === 'en')
+    responseWord = responseWord.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+
+  return responseWord
 }
 export const askForRecognition = retry(_askForRecognition, 3, 'Cannot ask for recognition')
 
