@@ -1,15 +1,24 @@
-// emcc -O3 --no-entry -s TOTAL_STACK=65536 -s INITIAL_MEMORY=262144 -o polygon_rast.wasm polygon_rast.c
+// emcc -O3 --no-entry -s TOTAL_STACK=65536 -s INITIAL_MEMORY=524288 -o polygon_rast.wasm polygon_rast.c
+
+#define _export
+
+#if __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
+#undef _export
+#define _export EMSCRIPTEN_KEEPALIVE
+#endif
+
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #define PIX_BUF_SIZE (180 * 200 * 4)
 static uint8_t pix_buf[PIX_BUF_SIZE];
-EMSCRIPTEN_KEEPALIVE uint8_t *get_pix_buf() { return pix_buf; }
+_export uint8_t *get_pix_buf() { return pix_buf; }
 
 #define PT_BUF_SIZE (256 * 2)
 static float pt_buf[PT_BUF_SIZE];
-EMSCRIPTEN_KEEPALIVE float *get_pt_buf() { return pt_buf; }
+_export float *get_pt_buf() { return pt_buf; }
 
 static int cmp_float(const void *_a, const void *_b)
 {
@@ -19,9 +28,23 @@ static int cmp_float(const void *_a, const void *_b)
 
 static inline float snoise3(float x, float y, float z);
 
-EMSCRIPTEN_KEEPALIVE void rasterize_fill(int w, int h, int n,
+#ifdef TESTRUN
+#include <stdio.h>
+#define debug(...) printf(__VA_ARGS__)
+#else
+#define debug(...)
+#endif
+
+_export void rasterize_fill(int w, int h, int n,
   float r, float g, float b, float opacity, int t)
 {
+  // Scratch space for Meijster's algorithm
+  static unsigned G[PIX_BUF_SIZE / 4];
+  static float D[PIX_BUF_SIZE / 4];
+  for (int i = 0; i < w * h; i++) G[i] = 0;
+  #define G(_x, _y) (G[(_x) + (_y) * w])
+  #define D(_x, _y) (D[(_x) + (_y) * w])
+
   // Clear texture
   for (int i = 0; i < w * h * 4; i++) pix_buf[i] = 0;
 
@@ -48,6 +71,7 @@ EMSCRIPTEN_KEEPALIVE void rasterize_fill(int w, int h, int n,
         int x_start = (xs[i] < 0 ? 0 : (int)(xs[i] + 0.5f));
         int x_end = (xs[i + 1] > w - 1 ? w - 1 : (int)(xs[i + 1] + 0.5f));
         for (int x = x_start; x <= x_end; x++) {
+          G(x, y) = w + h;
           float a = opacity * (0.85f + 0.15f * snoise3(x / 100.f, t / 720.f, y / 100.f));
           pix_buf[(y * w + x) * 4 + 0] = (int)(r * 255);
           pix_buf[(y * w + x) * 4 + 1] = (int)(g * 255);
@@ -57,9 +81,85 @@ EMSCRIPTEN_KEEPALIVE void rasterize_fill(int w, int h, int n,
       }
     }
   }
+
+  // Meijster's algorithm
+  #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
+  for (int x = 0; x < w; x++) {
+    G(x, 0) = min(G(x, 0), 1);
+    G(x, h - 1) = min(G(x, h - 1), 1);
+    for (int y = 0; y < h; y++)
+      G(x, y) = min(G(x, y), G(x, y - 1) + 1);
+    for (int y = h - 1; y >= 0; y--)
+      G(x, y) = min(G(x, y), G(x, y + 1) + 1);
+  }
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) debug("%5u", G(x, y));
+    debug("\n");
+  }
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      unsigned d = (w + h) * (w + h);
+      for (int i = 0; i < w; i++)
+        d = min(d, (x - i) * (x - i) + G(i, y) * G(i, y));
+      D(x, y) = sqrtf(d);
+    }
+  }
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) debug("%5.2f", D(x, y));
+    debug("\n");
+  }
+
+  for (int y = 1; y < h - 1; y++) {
+    for (int x = 1; x < w - 1; x++) {
+      float gx =
+        (D(x+1, y-1) + 2 * D(x+1, y) + D(x+1, y+1)) -
+        (D(x-1, y-1) + 2 * D(x-1, y) + D(x-1, y+1));
+      float gy =
+        (D(x-1, y+1) + 2 * D(x, y+1) + D(x+1, y+1)) -
+        (D(x-1, y-1) + 2 * D(x, y-1) + D(x+1, y-1));
+      float nz = 1. / sqrtf(gx * gx + gy * gy + 1);
+      float nx = -gx * nz, ny = -gy * nz;
+      const float Cx = -3, Cy = -3, Cz = 5, Cn = sqrtf(Cx*Cx + Cy*Cy + Cz*Cz);
+      float c = (nx * Cx/Cn + ny * Cy/Cn + nz * Cz/Cn);
+      unsigned is_highlight = (c > 0.7);
+      // debug("%2c", G(x, y) > 0 ? (is_highlight ? '#' : '*') : '.');
+      debug("%4.1f %4.1f  ", gx, gy);
+      pix_buf[(y * w + x) * 4 + 3] = (int)((c < 0 ? 0 : c) * 255);
+      if (0) if (G(x, y) > 0 && is_highlight) {
+        pix_buf[(y * w + x) * 4 + 0] = 255;
+        pix_buf[(y * w + x) * 4 + 1] = 255;
+        pix_buf[(y * w + x) * 4 + 2] = 255;
+        pix_buf[(y * w + x) * 4 + 2] = 255;
+      }
+    }
+    debug("\n");
+  }
 }
 
-EMSCRIPTEN_KEEPALIVE void rasterize_outline(int w, int h, int n,
+#ifdef TESTRUN
+#include <string.h>
+
+int main()
+{
+  float pt[] = {
+    // 1, 1, 6, -0.5, 12, 1, 14, 3, 16, 11, 10, 17, 4, 5, 3, 9
+10.0000,18.0000,12.0706,17.7274,14.0000,16.9282,15.6569,15.6569,16.9282,14.0000,17.7274,12.0706,18.0000,10.0000,17.7274,7.9294,16.9282,6.0000,15.6569,4.3431,14.0000,3.0718,12.0706,2.2726,10.0000,2.0000,7.9294,2.2726,6.0000,3.0718,4.3431,4.3431,3.0718,6.0000,2.2726,7.9294,2.0000,10.0000,2.2726,12.0706,3.0718,14.0000,4.3431,15.6569,6.0000,16.9282,7.9294,17.7274
+/*
+from math import *; print(','.join('%.4f,%.4f' % (10 + 8*sin(i/24*pi*2), 10 + 8*cos(i/24*pi*2)) for i in range(24)))
+*/
+  };
+  int n = sizeof pt / sizeof pt[0];
+  int scale = 1;
+  for (int i = 0; i < n; i++) pt[i] *= scale;
+  memcpy(pt_buf, pt, sizeof pt);
+  rasterize_fill(20 * scale, 20 * scale, n / 2, 1, 1, 1, 1, 0);
+  return 0;
+}
+#endif
+
+_export void rasterize_outline(int w, int h, int n,
   float r, float g, float b)
 {
   float x1 = pt_buf[(n - 1) * 2 + 0];
@@ -194,93 +294,93 @@ static inline float snoise3(float x, float y, float z) {
 #define F3 0.333333333
 #define G3 0.166666667
 
-    float n0, n1, n2, n3; // Noise contributions from the four corners
+  float n0, n1, n2, n3; // Noise contributions from the four corners
 
-    // Skew the input space to determine which simplex cell we're in
-    float s = (x+y+z)*F3; // Very nice and simple skew factor for 3D
-    float xs = x+s;
-    float ys = y+s;
-    float zs = z+s;
-    int i = FASTFLOOR(xs);
-    int j = FASTFLOOR(ys);
-    int k = FASTFLOOR(zs);
+  // Skew the input space to determine which simplex cell we're in
+  float s = (x+y+z)*F3; // Very nice and simple skew factor for 3D
+  float xs = x+s;
+  float ys = y+s;
+  float zs = z+s;
+  int i = FASTFLOOR(xs);
+  int j = FASTFLOOR(ys);
+  int k = FASTFLOOR(zs);
 
-    float t = (float)(i+j+k)*G3; 
-    float X0 = i-t; // Unskew the cell origin back to (x,y,z) space
-    float Y0 = j-t;
-    float Z0 = k-t;
-    float x0 = x-X0; // The x,y,z distances from the cell origin
-    float y0 = y-Y0;
-    float z0 = z-Z0;
+  float t = (float)(i+j+k)*G3; 
+  float X0 = i-t; // Unskew the cell origin back to (x,y,z) space
+  float Y0 = j-t;
+  float Z0 = k-t;
+  float x0 = x-X0; // The x,y,z distances from the cell origin
+  float y0 = y-Y0;
+  float z0 = z-Z0;
 
-    // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
-    // Determine which simplex we are in.
-    int i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
-    int i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
+  // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
+  // Determine which simplex we are in.
+  int i1, j1, k1; // Offsets for second corner of simplex in (i,j,k) coords
+  int i2, j2, k2; // Offsets for third corner of simplex in (i,j,k) coords
 
 /* This code would benefit from a backport from the GLSL version! */
-    if(x0>=y0) {
-      if(y0>=z0)
-        { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; } // X Y Z order
-        else if(x0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; } // X Z Y order
-        else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; } // Z X Y order
-      }
-    else { // x0<y0
-      if(y0<z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; } // Z Y X order
-      else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } // Y Z X order
-      else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } // Y X Z order
+  if(x0>=y0) {
+    if(y0>=z0)
+      { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; } // X Y Z order
+      else if(x0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; } // X Z Y order
+      else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; } // Z X Y order
     }
-
-    // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
-    // a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
-    // a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
-    // c = 1/6.
-
-    float x1 = x0 - i1 + G3; // Offsets for second corner in (x,y,z) coords
-    float y1 = y0 - j1 + G3;
-    float z1 = z0 - k1 + G3;
-    float x2 = x0 - i2 + 2.0f*G3; // Offsets for third corner in (x,y,z) coords
-    float y2 = y0 - j2 + 2.0f*G3;
-    float z2 = z0 - k2 + 2.0f*G3;
-    float x3 = x0 - 1.0f + 3.0f*G3; // Offsets for last corner in (x,y,z) coords
-    float y3 = y0 - 1.0f + 3.0f*G3;
-    float z3 = z0 - 1.0f + 3.0f*G3;
-
-    // Wrap the integer indices at 256, to avoid indexing perm[] out of bounds
-    int ii = i & 0xff;
-    int jj = j & 0xff;
-    int kk = k & 0xff;
-
-    // Calculate the contribution from the four corners
-    float t0 = 0.5f - x0*x0 - y0*y0 - z0*z0;
-    if(t0 < 0.0f) n0 = 0.0f;
-    else {
-      t0 *= t0;
-      n0 = t0 * t0 * grad3(perm[ii+perm[jj+perm[kk]]], x0, y0, z0);
-    }
-
-    float t1 = 0.5f - x1*x1 - y1*y1 - z1*z1;
-    if(t1 < 0.0f) n1 = 0.0f;
-    else {
-      t1 *= t1;
-      n1 = t1 * t1 * grad3(perm[ii+i1+perm[jj+j1+perm[kk+k1]]], x1, y1, z1);
-    }
-
-    float t2 = 0.5f - x2*x2 - y2*y2 - z2*z2;
-    if(t2 < 0.0f) n2 = 0.0f;
-    else {
-      t2 *= t2;
-      n2 = t2 * t2 * grad3(perm[ii+i2+perm[jj+j2+perm[kk+k2]]], x2, y2, z2);
-    }
-
-    float t3 = 0.5f - x3*x3 - y3*y3 - z3*z3;
-    if(t3<0.0f) n3 = 0.0f;
-    else {
-      t3 *= t3;
-      n3 = t3 * t3 * grad3(perm[ii+1+perm[jj+1+perm[kk+1]]], x3, y3, z3);
-    }
-
-    // Add contributions from each corner to get the final noise value.
-    // The result is scaled to stay just inside [-1,1]
-    return 72.0f * (n0 + n1 + n2 + n3);
+  else { // x0<y0
+    if(y0<z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; } // Z Y X order
+    else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; } // Y Z X order
+    else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } // Y X Z order
   }
+
+  // A step of (1,0,0) in (i,j,k) means a step of (1-c,-c,-c) in (x,y,z),
+  // a step of (0,1,0) in (i,j,k) means a step of (-c,1-c,-c) in (x,y,z), and
+  // a step of (0,0,1) in (i,j,k) means a step of (-c,-c,1-c) in (x,y,z), where
+  // c = 1/6.
+
+  float x1 = x0 - i1 + G3; // Offsets for second corner in (x,y,z) coords
+  float y1 = y0 - j1 + G3;
+  float z1 = z0 - k1 + G3;
+  float x2 = x0 - i2 + 2.0f*G3; // Offsets for third corner in (x,y,z) coords
+  float y2 = y0 - j2 + 2.0f*G3;
+  float z2 = z0 - k2 + 2.0f*G3;
+  float x3 = x0 - 1.0f + 3.0f*G3; // Offsets for last corner in (x,y,z) coords
+  float y3 = y0 - 1.0f + 3.0f*G3;
+  float z3 = z0 - 1.0f + 3.0f*G3;
+
+  // Wrap the integer indices at 256, to avoid indexing perm[] out of bounds
+  int ii = i & 0xff;
+  int jj = j & 0xff;
+  int kk = k & 0xff;
+
+  // Calculate the contribution from the four corners
+  float t0 = 0.5f - x0*x0 - y0*y0 - z0*z0;
+  if(t0 < 0.0f) n0 = 0.0f;
+  else {
+    t0 *= t0;
+    n0 = t0 * t0 * grad3(perm[ii+perm[jj+perm[kk]]], x0, y0, z0);
+  }
+
+  float t1 = 0.5f - x1*x1 - y1*y1 - z1*z1;
+  if(t1 < 0.0f) n1 = 0.0f;
+  else {
+    t1 *= t1;
+    n1 = t1 * t1 * grad3(perm[ii+i1+perm[jj+j1+perm[kk+k1]]], x1, y1, z1);
+  }
+
+  float t2 = 0.5f - x2*x2 - y2*y2 - z2*z2;
+  if(t2 < 0.0f) n2 = 0.0f;
+  else {
+    t2 *= t2;
+    n2 = t2 * t2 * grad3(perm[ii+i2+perm[jj+j2+perm[kk+k2]]], x2, y2, z2);
+  }
+
+  float t3 = 0.5f - x3*x3 - y3*y3 - z3*z3;
+  if(t3<0.0f) n3 = 0.0f;
+  else {
+    t3 *= t3;
+    n3 = t3 * t3 * grad3(perm[ii+1+perm[jj+1+perm[kk+1]]], x3, y3, z3);
+  }
+
+  // Add contributions from each corner to get the final noise value.
+  // The result is scaled to stay just inside [-1,1]
+  return 72.0f * (n0 + n1 + n2 + n3);
+}
