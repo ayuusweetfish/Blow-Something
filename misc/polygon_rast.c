@@ -131,17 +131,20 @@ _export void rasterize_fill(int w, int h, int n,
 
   for (int y = 1; y < h - 1; y++) {
     for (int x = 1; x < w - 1; x++) {
-      float gx =
+      float gx = (
         (F(x+1, y-1) + 2 * F(x+1, y) + F(x+1, y+1)) -
-        (F(x-1, y-1) + 2 * F(x-1, y) + F(x-1, y+1));
-      float gy =
+        (F(x-1, y-1) + 2 * F(x-1, y) + F(x-1, y+1))
+      ) / 4;
+      float gy = (
         (F(x-1, y+1) + 2 * F(x, y+1) + F(x+1, y+1)) -
-        (F(x-1, y-1) + 2 * F(x, y-1) + F(x+1, y-1));
+        (F(x-1, y-1) + 2 * F(x, y-1) + F(x+1, y-1))
+      ) / 4;
       float nz = 1. / sqrtf(gx * gx + gy * gy + 1);
       float nx = -gx * nz, ny = -gy * nz;
-      const float Lx = -1, Ly = -1, Lz = (w + h) / 4.0f;
+      const float Lx = -1000, Ly = -1000, Lz = 400;
       float lx = Lx - x, ly = Ly - y, lz = Lz - F(x, y);
-      float vx = -x, vy = -y, vz = -F(x, y);
+      normalize3(&lx, &ly, &lz);
+      float vx = -x, vy = -y, vz = 1000 - F(x, y);
       normalize3(&vx, &vy, &vz);
       float hx = lx + vx, hy = ly + vy, hz = lz + vz;
       normalize3(&hx, &hy, &hz);
@@ -163,6 +166,8 @@ _export void rasterize_fill(int w, int h, int n,
 
 #ifdef TESTRUN
 #include <string.h>
+
+// cc polygon_rast.c -o /tmp/a.out -DTESTRUN -lm && /tmp/a.out
 
 int main()
 {
