@@ -68,9 +68,11 @@ _export void rasterize_fill(int w, int h, int n,
   // Scratch space for Meijster's algorithm
   static unsigned G[N_PIXELS];
   static float F[N_PIXELS];
+  static float Clast[N_PIXELS];
   for (int i = 0; i < w * h; i++) G[i] = 0;
   #define G(_x, _y) (G[(_x) + (_y) * w])
   #define F(_x, _y) (F[(_x) + (_y) * w])
+  #define Clast(_x, _y) (Clast[(_x) + (_y) * w])
 
   // Clear texture
   for (int i = 0; i < w * h * 4; i++) pix_buf[i] = 0;
@@ -270,7 +272,12 @@ end
       float hx = lx + vx, hy = ly + vy, hz = lz + vz;
       normalize3(&hx, &hy, &hz);
       float c = hx * nx + hy * ny + hz * nz;
-      unsigned is_highlight = (INSIDE(x, y) && c > 0.95);
+      float clast = Clast(x, y);
+      c = c + (Clast(x, y) - c) * 0.92f;
+      if (clast < 0.95f && c >= 0.95f) c = 1;
+      else if (clast >= 0.95f && c < 0.95f && c > 0.8f) c = 0.8f;
+      Clast(x, y) = c;
+      unsigned is_highlight = (INSIDE(x, y) && c > 0.95f);
       debug("%2c", INSIDE(x, y) ? (is_highlight ? '#' : '*') : '.');
       // debug("%2c", INSIDE(x, y) ? (G(x, y) ? '#' : '*') : '.');
       if (is_highlight) {
