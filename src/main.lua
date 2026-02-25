@@ -5,8 +5,8 @@ local isMobile = (love.system.getOS() == 'Android' or love.system.getOS() == 'iO
 local isWeb = (love.system.getOS() == 'Web')
 
 love.window.setMode(
-  isWeb and W * 2 or W * 2,
-  isWeb and H * 2 or H * 2,
+  isWeb and W * 2 or W * 3,
+  isWeb and H * 2 or H * 3,
   { fullscreen = false, highdpi = true }
 )
 
@@ -143,13 +143,14 @@ function love.update(dt)
   local count = 0
   bgm_update()
   audio.sfx_update(dt)
-  while T > timeStep and count < 4 do
+  -- No slowdown if graphics run at >= 20 FPS
+  while T > timeStep and count < 12 do
     T = T - timeStep
     count = count + 1
     if lastScene ~= nil then
       lastScene:update()
-      -- At most 4 ticks per update for transitions
-      if count <= 4 then
+      -- At most 8 ticks per update for transitions
+      if count <= 8 then
         transitionTimer = transitionTimer + 1
       end
     else
@@ -190,6 +191,10 @@ function love.draw()
     end
   else
     curScene.draw()
+  end
+  if true then
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.print(love.timer.getFPS(), 2, 280)
   end
   love.graphics.pop()
 end

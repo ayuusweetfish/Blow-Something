@@ -955,8 +955,6 @@ return function ()
   end
 
   s.draw = function ()
-    love.graphics.clear(1, 1, 1)
-
     love.graphics.setColor(1, 1, 1)
     local backgroundFrame = 0
     if catBingoSince >= 0 then

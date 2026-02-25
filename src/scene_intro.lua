@@ -31,7 +31,7 @@ return function ()
   end
 
   s.draw = function ()
-    love.graphics.clear(1, 1, 1)
+    love.graphics.clear(0, 0, 0)
     draw.img('cover', 0, 0, W, H)
     btnLang.draw()
   end

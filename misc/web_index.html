@@ -7,23 +7,25 @@
     <title>Blow Something</title>
     <style>
       body { margin: 0; padding: 0; background: #040404; }
+      * {
+        user-select: none;
+      }
       canvas {
         border: none; background: black;
-        width: 56.25vh; height: 100vh;
+        width: 56.25dvh; height: 100dvh;
         max-height: 177.778vw; max-width: 100vw;
         position: absolute; margin: auto;
         top: 0; bottom: 0; left: 0; right: 0;
+        image-rendering: pixelated;
       }
       #loading {
         position: absolute;
         bottom: 0;
-        user-select: none;
         color: #fefefe;
       }
     </style>
   </head>
   <body>
-    <canvas id="loadingCanvas" oncontextmenu="event.preventDefault()" width="360" height="640"></canvas>
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <p id='loading'>Loading...</p>
 
@@ -42,21 +44,6 @@
         var canvas = document.getElementById("canvas");
         canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
         canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-      }
-      var loadingContext = document.getElementById('loadingCanvas').getContext('2d');
-      function drawLoadingText(text) {
-        var canvas = loadingContext.canvas;
-
-        loadingContext.fillStyle = "rgb(142, 195, 227)";
-        loadingContext.fillRect(0, 0, canvas.scrollWidth, canvas.scrollHeight);
-
-        loadingContext.font = '2em arial';
-        loadingContext.textAlign = 'center'
-        loadingContext.fillStyle = "rgb( 11, 86, 117 )";
-        loadingContext.fillText(text, canvas.scrollWidth / 2, canvas.scrollHeight / 2);
-
-        loadingContext.fillText("Powered By Emscripten.", canvas.scrollWidth / 2, canvas.scrollHeight / 4);
-        loadingContext.fillText("Powered By LÖVE.", canvas.scrollWidth / 2, canvas.scrollHeight / 4 * 3);
       }
 
       window.onload = function () { window.focus(); };
@@ -157,10 +144,8 @@
           if (!loadingText) return;
           if (text) {
             if (text === 'Running...') text = 'Loading assets...';
-            drawLoadingText(text);
             loadingText.innerText = text;
-          } else if (Module.remainingDependencies === 0) {
-            document.getElementById('loadingCanvas').style.display = 'none';
+          } else {
             document.getElementById('canvas').style.visibility = 'visible';
             loadingText.innerText = '';
           }
