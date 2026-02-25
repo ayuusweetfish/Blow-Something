@@ -372,7 +372,7 @@ local particles = function ()
   local ps = {}
 
   -- p: {{x, y} * n}
-  local pop = function (p, r, g, b)
+  local pop = function (p, grav, r, g, b)
     local n = #p
     local yMin, yMax = 1e8, -1e8
     local xCen, yCen = 0, 0
@@ -414,6 +414,7 @@ local particles = function ()
               x = px, y = py,
               vx = (px - xCen) * vScale,
               vy = (py - yCen) * vScale,
+              grav = grav,
               r = r, g = g, b = b, a = 1,
               t = 0, ttl = 120 + love.math.random() * 120,
             }
@@ -432,7 +433,7 @@ local particles = function ()
       local alpha = expProgress * (1 - p.t / p.ttl)
       -- Wow such particles
       p.x = p.x0 + p.vx * (1 - expProgress)
-      p.y = p.y0 + p.vy * (1 - expProgress) + (p.t / 240) * (p.vy * 4 + (p.t / 240) * 100)
+      p.y = p.y0 + p.vy * (1 - expProgress) + p.grav * (p.t / 240) * (p.vy * 4 + (p.t / 240) * 100)
       p.t = p.t + 1
       p.a = alpha
       if p.t >= p.ttl then
@@ -654,6 +655,8 @@ return function ()
   local paintPressStart = nil
   local paintPressX0, paintPressY0
 
+  local particles = particles()
+
   local buttons = {}
   local btnStick
   btnStick = button({ x = 131, y = 197, w = 18, h = 79 }, function ()
@@ -681,6 +684,11 @@ return function ()
   local paletteButton = function (x, y, w, h, r, g, b)
     buttons[#buttons + 1] = button({ x = x, y = y, w = w, h = h }, function ()
       selPaint = { r, g, b }
+      local m = 3
+      local y = y - 2   -- Offset bubble particle display characteristics
+      particles.pop({{x - m, y - m}, {x + w + m, y - m}, {x + w + m, y + h + m}, {x - m, y + h + m}},
+        -0.1, 1 - (1 - r) * 0.2, 1 - (1 - g) * 0.2, 1 - (1 - b) * 0.2)
+      audio.sfx('paint')
     end)
   end
   paletteButton(45, 266, 18, 17, 1, .19, .30)
@@ -715,7 +723,6 @@ return function ()
   local Xc = W * 0.5
   local Yc = 156
 
-  local particles = particles()
   local bubblePolygon = function (Xc, Yc, WcEx, HcEx)
     local p = {}
     for i = 1, n do
@@ -809,7 +816,7 @@ return function ()
             texCanvas, selPaint[1], selPaint[2], selPaint[3])
           imgCanvas:replacePixels(texCanvas)
           -- Create particle effect
-          particles.pop(bubblePolygon(Xc, Yc, 0, 0), selPaint[1], selPaint[2], selPaint[3])
+          particles.pop(bubblePolygon(Xc, Yc, 0, 0), 1, selPaint[1], selPaint[2], selPaint[3])
           bubbles.close()
           -- Disable & hide language button
           btnLang.enabled = false
