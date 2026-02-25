@@ -3,3 +3,5 @@
 !/backups/highlight_test/
 /misc/lovejs-env/node_modules/
 /release/
+/server/bubble.db
+/server/run.sh
