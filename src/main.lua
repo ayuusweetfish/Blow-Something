@@ -192,7 +192,7 @@ function love.draw()
   else
     curScene.draw()
   end
-  if true then
+  if not true then
     love.graphics.setColor(0, 0, 0)
     love.graphics.print(love.timer.getFPS(), 2, 280)
   end

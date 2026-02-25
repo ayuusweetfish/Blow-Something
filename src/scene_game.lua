@@ -946,7 +946,7 @@ return function ()
 
   s.key = function (key)
     if key == 'space' then rewardCount = rewardCount + 1 end
-    if key == '1' then randomTargetWord() end
+    if false and key == '1' then randomTargetWord() end
   end
 
   local confetti = draw.get('confetti')
