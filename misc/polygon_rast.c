@@ -48,21 +48,6 @@ static inline void normalize3(float *x, float *y, float *z)
   *x /= d; *y /= d; *z /= d;
 }
 
-static bool point_in_polygon(const float *a, int n, float x, float y)
-{
-  // Winding number with optimization by W. Randolph Franklin
-  // https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
-  float x0 = x, y0 = y;
-  bool c = false;
-  for (int i = 0; i < n; i++) {
-    float x1 = a[i * 2], y1 = a[i * 2 + 1];
-    float x2 = a[((i + 1) % n) * 2], y2 = a[((i + 1) % n) * 2 + 1];
-    c ^= (((y2 > y0) != (y1 > y0)) &&
-          x0 < (x1 - x2) * (y0 - y2) / (y1 - y2) + x2);
-  }
-  return c;
-}
-
 static uint8_t jcv_myalloc_buf[131072 * 8];
 static size_t jcv_myalloc_ptr;
 static void *jcv_myalloc(void *_unused, size_t n)
@@ -126,6 +111,11 @@ _export void rasterize_fill(int w, int h, int n,
     }
   }
 
+  // Take the alpha channel as a flag because it is not sensible to set it as 0
+  #define INSIDE(_x, _y) \
+    ((_x) >= 0 && (_x) < w && (_y) >= 0 && (_y) < h && \
+     pix_buf[((int)(_y) * w + (int)(_x)) * 4 + 3] > 0)
+
   // Meijster's algorithm
   #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
   for (int x = 0; x < w; x++) {
@@ -159,25 +149,24 @@ _export void rasterize_fill(int w, int h, int n,
     n, (void *)pt_buf, &(jcv_rect){{-10, -10}, {10 + w, 10 + h}}, NULL,
     NULL, jcv_myalloc, jcv_myfree, &diagram);
 
-  // XXX: Edge filtering can also be done in total O(n log n) time by
+  // NOTE: Edge filtering can also be done in total O(n log n) time by
   // building the node-edge graph of the Voronoi diagram and removing
   // all vertices connected to the infinite vertices. See `backups/highlight_test/main.c`
-  // However, as n is small (<= 256) we simply do quadratic.
-  const jcv_edge* edge = jcv_diagram_get_edges(&diagram);
-  while (edge != NULL) {
-    if (point_in_polygon(pt_buf, n, edge->pos[0].x, edge->pos[0].y) &&
-        point_in_polygon(pt_buf, n, edge->pos[1].x, edge->pos[1].y)) {
-      debug("Segment((%.4f, %.4f), (%.4f, %.4f)),\n",
-        edge->pos[0].x, edge->pos[0].y,
-        edge->pos[1].x, edge->pos[1].y);
+  // However as we already have the polygon's mask, we can just look it up!
+  for (const jcv_edge* edge = jcv_diagram_get_edges(&diagram);
+      edge != NULL;
+      edge = jcv_diagram_get_next_edge(edge)
+  ) {
+    float x1 = edge->pos[0].x, y1 = edge->pos[0].y;
+    float x2 = edge->pos[1].x, y2 = edge->pos[1].y;
 
+    if (INSIDE(x1, y1) && INSIDE(x2, y2)) {
       // Trace line with Bresenham's Algorithm, working in fixed-point
-
       const int SUBPX = 4;
-      int x1_fixed = (int)(edge->pos[0].x * (1 << SUBPX) + 0.5);
-      int y1_fixed = (int)(edge->pos[0].y * (1 << SUBPX) + 0.5);
-      int x2_fixed = (int)(edge->pos[1].x * (1 << SUBPX) + 0.5);
-      int y2_fixed = (int)(edge->pos[1].y * (1 << SUBPX) + 0.5);
+      int x1_fixed = (int)(x1 * (1 << SUBPX) + 0.5);
+      int y1_fixed = (int)(y1 * (1 << SUBPX) + 0.5);
+      int x2_fixed = (int)(x2 * (1 << SUBPX) + 0.5);
+      int y2_fixed = (int)(y2 * (1 << SUBPX) + 0.5);
 
       int dx = abs(x2_fixed - x1_fixed);
       int dy = abs(y2_fixed - y1_fixed);
@@ -203,9 +192,7 @@ _export void rasterize_fill(int w, int h, int n,
         if (e2 > -dy) { err -= dy; x += sx; }
         if (e2 <  dx) { err += dx; y += sy; }
       }
-
     }
-    edge = jcv_diagram_get_next_edge(edge);
   }
 
   jcv_diagram_free(&diagram);
@@ -229,6 +216,7 @@ _export void rasterize_fill(int w, int h, int n,
     debug("\n");
   }
 
+  // 2-D Gaussian blur on F
 /*
 sigma = 1
 n = 3
@@ -260,8 +248,10 @@ end
     for (int y = 0; y < h - 0; y++) F(x, y) = FF[y];
   }
 
-  for (int y = 2; y < h - 2; y++) {
-    for (int x = 2; x < w - 2; x++) {
+  // The light!
+  for (int y = 1; y < h - 1; y++) {
+    for (int x = 1; x < w - 1; x++) {
+      // Normal vector
       float gx = (
         (F(x+1, y-1) + 2 * F(x+1, y) + F(x+1, y+1)) -
         (F(x-1, y-1) + 2 * F(x-1, y) + F(x-1, y+1))
@@ -272,6 +262,7 @@ end
       ) / 4;
       float nz = 1. / sqrtf(gx * gx + gy * gy + 1);
       float nx = -gx * nz, ny = -gy * nz;
+      // Blinn-Phong specular lighting
       const float Lx = -1000, Ly = -1000, Lz = 400;
       float lx = Lx - x, ly = Ly - y, lz = Lz - F(x, y);
       normalize3(&lx, &ly, &lz);
@@ -280,9 +271,9 @@ end
       float hx = lx + vx, hy = ly + vy, hz = lz + vz;
       normalize3(&hx, &hy, &hz);
       float c = hx * nx + hy * ny + hz * nz;
-      unsigned is_highlight = (D(x, y) > 0 && c > 0.95);
-      // debug("%2c", D(x, y) > 0 ? (is_highlight ? '#' : '*') : '.');
-      debug("%2c", D(x, y) > 0 ? (G(x, y) ? '#' : '*') : '.');
+      unsigned is_highlight = (INSIDE(x, y) && c > 0.95);
+      debug("%2c", INSIDE(x, y) ? (is_highlight ? '#' : '*') : '.');
+      // debug("%2c", INSIDE(x, y) ? (G(x, y) ? '#' : '*') : '.');
       if (is_highlight) {
         pix_buf[(y * w + x) * 4 + 0] = 255 - (255 - pix_buf[(y * w + x) * 4 + 0]) * .4;
         pix_buf[(y * w + x) * 4 + 1] = 255 - (255 - pix_buf[(y * w + x) * 4 + 1]) * .4;
