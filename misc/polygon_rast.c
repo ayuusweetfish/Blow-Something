@@ -1,4 +1,4 @@
-// emcc -O3 --no-entry -s TOTAL_STACK=65536 -s INITIAL_MEMORY=524288 -o polygon_rast.wasm polygon_rast.c
+// emcc -O3 --no-entry -s TOTAL_STACK=65536 -s INITIAL_MEMORY=1048576 -o polygon_rast.wasm polygon_rast.c
 
 #define _export
 
@@ -40,10 +40,12 @@ _export void rasterize_fill(int w, int h, int n,
 {
   // Scratch space for Meijster's algorithm
   static unsigned G[PIX_BUF_SIZE / 4];
-  static float D[PIX_BUF_SIZE / 4];
+  static unsigned D[PIX_BUF_SIZE / 4];
+  static float F[PIX_BUF_SIZE / 4];
   for (int i = 0; i < w * h; i++) G[i] = 0;
   #define G(_x, _y) (G[(_x) + (_y) * w])
   #define D(_x, _y) (D[(_x) + (_y) * w])
+  #define F(_x, _y) (F[(_x) + (_y) * w])
 
   // Clear texture
   for (int i = 0; i < w * h * 4; i++) pix_buf[i] = 0;
@@ -102,32 +104,46 @@ _export void rasterize_fill(int w, int h, int n,
       unsigned d = (w + h) * (w + h);
       for (int i = 0; i < w; i++)
         d = min(d, (x - i) * (x - i) + G(i, y) * G(i, y));
-      D(x, y) = sqrtf(d);
+      D(x, y) = d;
+    }
+  }
+
+  // F(P) = max_C (sqrt(D(C)^2 - (P-C)^2)),
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      int f = 0;
+      for (int y1 = 0; y1 < h; y1++) {
+        for (int x1 = 0; x1 < w; x1++) {
+          int f1 = D(x1, y1) - (x1-x)*(x1-x) - (y1-y)*(y1-y);
+          if (f < f1) f = f1;
+        }
+      }
+      F(x, y) = sqrtf(f);
     }
   }
 
   for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) debug("%5.2f", D(x, y));
+    for (int x = 0; x < w; x++) debug("%5.2f", F(x, y));
     debug("\n");
   }
 
   for (int y = 1; y < h - 1; y++) {
     for (int x = 1; x < w - 1; x++) {
       float gx =
-        (D(x+1, y-1) + 2 * D(x+1, y) + D(x+1, y+1)) -
-        (D(x-1, y-1) + 2 * D(x-1, y) + D(x-1, y+1));
+        (F(x+1, y-1) + 2 * F(x+1, y) + F(x+1, y+1)) -
+        (F(x-1, y-1) + 2 * F(x-1, y) + F(x-1, y+1));
       float gy =
-        (D(x-1, y+1) + 2 * D(x, y+1) + D(x+1, y+1)) -
-        (D(x-1, y-1) + 2 * D(x, y-1) + D(x+1, y-1));
+        (F(x-1, y+1) + 2 * F(x, y+1) + F(x+1, y+1)) -
+        (F(x-1, y-1) + 2 * F(x, y-1) + F(x+1, y-1));
       float nz = 1. / sqrtf(gx * gx + gy * gy + 1);
       float nx = -gx * nz, ny = -gy * nz;
-      const float Cx = -3, Cy = -3, Cz = 5, Cn = sqrtf(Cx*Cx + Cy*Cy + Cz*Cz);
+      const float Cx = -7, Cy = -7, Cz = 5, Cn = sqrtf(Cx*Cx + Cy*Cy + Cz*Cz);
       float c = (nx * Cx/Cn + ny * Cy/Cn + nz * Cz/Cn);
-      unsigned is_highlight = (c > 0.7);
-      // debug("%2c", G(x, y) > 0 ? (is_highlight ? '#' : '*') : '.');
-      debug("%4.1f %4.1f  ", gx, gy);
+      unsigned is_highlight = (c > 0.95);
+      debug("%2c", G(x, y) > 0 ? (is_highlight ? '#' : '*') : '.');
+      // debug("%4.1f %4.1f  ", gx, gy);
       pix_buf[(y * w + x) * 4 + 3] = (int)((c < 0 ? 0 : c) * 255);
-      if (0) if (G(x, y) > 0 && is_highlight) {
+      if (G(x, y) > 0 && is_highlight) {
         pix_buf[(y * w + x) * 4 + 0] = 255;
         pix_buf[(y * w + x) * 4 + 1] = 255;
         pix_buf[(y * w + x) * 4 + 2] = 255;
@@ -151,7 +167,7 @@ from math import *; print(','.join('%.4f,%.4f' % (10 + 8*sin(i/24*pi*2), 10 + 8*
 */
   };
   int n = sizeof pt / sizeof pt[0];
-  int scale = 1;
+  int scale = 3;
   for (int i = 0; i < n; i++) pt[i] *= scale;
   memcpy(pt_buf, pt, sizeof pt);
   rasterize_fill(20 * scale, 20 * scale, n / 2, 1, 1, 1, 1, 0);
