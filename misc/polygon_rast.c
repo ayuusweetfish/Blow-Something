@@ -69,10 +69,12 @@ _export void rasterize_fill(int w, int h, int n,
   static unsigned G[N_PIXELS];
   static float F[N_PIXELS];
   static float Clast[N_PIXELS];
+  static unsigned char Hlast[N_PIXELS];
   for (int i = 0; i < w * h; i++) G[i] = 0;
   #define G(_x, _y) (G[(_x) + (_y) * w])
   #define F(_x, _y) (F[(_x) + (_y) * w])
   #define Clast(_x, _y) (Clast[(_x) + (_y) * w])
+  #define Hlast(_x, _y) (Hlast[(_x) + (_y) * w])
 
   // Clear texture
   for (int i = 0; i < w * h * 4; i++) pix_buf[i] = 0;
@@ -263,6 +265,7 @@ end
       ) / 4;
       float nz = 1. / sqrtf(gx * gx + gy * gy + 1);
       float nx = -gx * nz, ny = -gy * nz;
+
       // Blinn-Phong specular lighting
       const float Lx = -1000, Ly = -1000, Lz = 400;
       float lx = Lx - x, ly = Ly - y, lz = Lz - F(x, y);
@@ -272,19 +275,34 @@ end
       float hx = lx + vx, hy = ly + vy, hz = lz + vz;
       normalize3(&hx, &hy, &hz);
       float c = hx * nx + hy * ny + hz * nz;
-      float clast = Clast(x, y);
-      c = c + (Clast(x, y) - c) * 0.92f;
-      if (clast < 0.95f && c >= 0.95f) c = 1;
-      else if (clast >= 0.95f && c < 0.95f && c > 0.8f) c = 0.8f;
-      Clast(x, y) = c;
-      unsigned is_highlight = (INSIDE(x, y) && c > 0.95f);
-      debug("%2c", INSIDE(x, y) ? (is_highlight ? '#' : '*') : '.');
+
+      // Exclude exterior parts
+      if (!INSIDE(x, y)) c = 0;
+
+      // Debug inspection
+      debug("%2c", INSIDE(x, y) ? (c > 0.95f ? '#' : '*') : '.');
       // debug("%2c", INSIDE(x, y) ? (G(x, y) ? '#' : '*') : '.');
-      if (is_highlight) {
+
+      // Smooth
+      float clast = Clast(x, y);
+      Clast(x, y) = c = c + (Clast(x, y) - c) * 0.8f;
+      // Level 2  ↑0.95 ↓0.90
+      // Level 1  ↑0.85 ↓0.80
+      int h = Hlast(x, y);
+      if (h < 1 && c >= 0.50) h = 1;
+      if (h < 2 && c >= 0.95) h = 2;
+      if (h >= 2 && c < 0.94) h = 1;
+      if (h >= 1 && c < 0.48) h = 0;
+      Hlast(x, y) = h;
+      if (h == 2) {
         pix_buf[(y * w + x) * 4 + 0] = 255 - (255 - pix_buf[(y * w + x) * 4 + 0]) * .4;
         pix_buf[(y * w + x) * 4 + 1] = 255 - (255 - pix_buf[(y * w + x) * 4 + 1]) * .4;
         pix_buf[(y * w + x) * 4 + 2] = 255 - (255 - pix_buf[(y * w + x) * 4 + 2]) * .4;
         pix_buf[(y * w + x) * 4 + 3] = 255 - (255 - pix_buf[(y * w + x) * 4 + 3]) * .4;
+      } else if (h == 1) {
+        pix_buf[(y * w + x) * 4 + 0] = 255 - (255 - pix_buf[(y * w + x) * 4 + 0]) * .8;
+        pix_buf[(y * w + x) * 4 + 1] = 255 - (255 - pix_buf[(y * w + x) * 4 + 1]) * .8;
+        pix_buf[(y * w + x) * 4 + 2] = 255 - (255 - pix_buf[(y * w + x) * 4 + 2]) * .8;
       }
     }
     debug("\n");
