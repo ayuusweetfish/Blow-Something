@@ -67,11 +67,9 @@ _export void rasterize_fill(int w, int h, int n,
 {
   // Scratch space for Meijster's algorithm
   static unsigned G[N_PIXELS];
-  static unsigned D[N_PIXELS];
   static float F[N_PIXELS];
   for (int i = 0; i < w * h; i++) G[i] = 0;
   #define G(_x, _y) (G[(_x) + (_y) * w])
-  #define D(_x, _y) (D[(_x) + (_y) * w])
   #define F(_x, _y) (F[(_x) + (_y) * w])
 
   // Clear texture
@@ -100,7 +98,6 @@ _export void rasterize_fill(int w, int h, int n,
         int x_start = (xs[i] < 0 ? 0 : (int)(xs[i] + 0.5f));
         int x_end = (xs[i + 1] > w - 1 ? w - 1 : (int)(xs[i + 1] + 0.5f));
         for (int x = x_start; x <= x_end; x++) {
-          G(x, y) = w + h;
           float a = opacity * (0.85f + 0.15f * snoise3(x / 100.f, t / 720.f, y / 100.f));
           pix_buf[(y * w + x) * 4 + 0] = (int)(r * 255);
           pix_buf[(y * w + x) * 4 + 1] = (int)(g * 255);
@@ -116,32 +113,14 @@ _export void rasterize_fill(int w, int h, int n,
     ((_x) >= 0 && (_x) < w && (_y) >= 0 && (_y) < h && \
      pix_buf[((int)(_y) * w + (int)(_x)) * 4 + 3] > 0)
 
-  // Meijster's algorithm
   #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
-  for (int x = 0; x < w; x++) {
-    G(x, 0) = min(G(x, 0), 1);
-    G(x, h - 1) = min(G(x, h - 1), 1);
-    for (int y = 1; y < h; y++)
-      G(x, y) = min(G(x, y), G(x, y - 1) + 1);
-    for (int y = h - 1; y >= 0; y--)
-      G(x, y) = min(G(x, y), G(x, y + 1) + 1);
-  }
-
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      unsigned d = (w + h) * (w + h);
-      for (int i = 0; i < w; i++)
-        d = min(d, (x - i) * (x - i) + G(i, y) * G(i, y));
-      D(x, y) = d;
-    }
-  }
 
   // Medial axis from Voronoi diagram
   // Deduplication. To draw a pixel, mark G(x, y) as 1 and add the coordinates to `ma[n_ma++]`.
   for (int y = 0; y < h; y++)
     for (int x = 0; x < w; x++) G(x, y) = 0;
   int n_ma = 0;
-  static uint8_t ma[N_PIXELS][2];
+  static struct { uint8_t x, y; unsigned d; } ma[N_PIXELS];
 
   static jcv_diagram diagram;
   diagram = (jcv_diagram){0};
@@ -182,8 +161,8 @@ _export void rasterize_fill(int w, int h, int n,
         if (pixel_x >= 0 && pixel_x < w && pixel_y >= 0 && pixel_y < h) {
           if (!G(pixel_x, pixel_y)) {
             G(pixel_x, pixel_y) = 1;
-            ma[n_ma][0] = (uint8_t)pixel_x;
-            ma[n_ma][1] = (uint8_t)pixel_y;
+            ma[n_ma].x = pixel_x;
+            ma[n_ma].y = pixel_y;
             n_ma++;
           }
         }
@@ -198,13 +177,33 @@ _export void rasterize_fill(int w, int h, int n,
   jcv_diagram_free(&diagram);
   jcv_myalloc_ptr = 0;
 
+  // Distance transform, but we only need the values on the medial axis.
+  // Meijster's algorithm, but the first step is optimized enough already (O(x^3))
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) G(x, y) = -(unsigned)INSIDE(x, y);
+    G(x, 0) = min(G(x, 0), 1);
+    G(x, h - 1) = min(G(x, h - 1), 1);
+    for (int y = 1; y < h; y++)
+      G(x, y) = min(G(x, y), G(x, y - 1) + 1);
+    for (int y = h - 1; y >= 0; y--)
+      G(x, y) = min(G(x, y), G(x, y + 1) + 1);
+  }
+
+  for (int i = 0; i < n_ma; i++) {
+    int x = ma[i].x, y = ma[i].y;
+    unsigned d = (w + h) * (w + h);
+    for (int j = 0; j < w; j++)
+      d = min(d, (x - j) * (x - j) + G(j, y) * G(j, y));
+    ma[i].d = d;
+  }
+
   // F(P) = max_C (sqrt(D(C)^2 - (P-C)^2)),
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       int f = 0;
       for (int i = 0; i < n_ma; i++) {
-        int x1 = ma[i][0], y1 = ma[i][1];
-        int f1 = D(x1, y1) - (x1-x)*(x1-x) - (y1-y)*(y1-y);
+        int x1 = ma[i].x, y1 = ma[i].y;
+        int f1 = ma[i].d - (x1-x)*(x1-x) - (y1-y)*(y1-y);
         if (f < f1) f = f1;
       }
       F(x, y) = sqrtf(f);
