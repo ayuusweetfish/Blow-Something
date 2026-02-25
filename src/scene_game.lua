@@ -32,6 +32,7 @@ if love.system.getOS() == 'Web' then
         table.remove(fetchFiles, 1)
         f:close()
         os.remove(path)
+        if content == '*err' then return '' end
         return content
       end
     end
@@ -930,7 +931,8 @@ return function ()
     local resp = fetchResponse()
     if resp ~= nil then
       recognitionResult = resp
-      recognitionResultText = love.graphics.newText(_G['global_font'](15), resp)
+      recognitionResultText = love.graphics.newText(_G['global_font'](15),
+        resp ~= '' and resp or (_G['lang'] == 'zh' and '*猫脑过载*' or '*Cat overload*'))
       previousGuesses[#previousGuesses + 1] = recognitionResult
 
       catThinkFrame = -1
@@ -1101,7 +1103,11 @@ return function ()
       love.graphics.setColor(1, 1, 1)
       speechBubbles[catAnswerSpeechBubble].draw(10, 164, math.floor(w + 0.5), 24)
       if catAnswerFrame >= 6 then
-        love.graphics.setColor(0, 0, 0)
+        if recognitionResult == '' then
+          love.graphics.setColor(0.45, 0, 0)
+        else
+          love.graphics.setColor(0, 0, 0)
+        end
         love.graphics.draw(recognitionResultText, 18, 169)
       end
     end

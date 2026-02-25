@@ -105,18 +105,18 @@
               body: payload.buffer,
             }).then((resp) => {
               if (resp.status !== 200) {
-                FS.writeFile(savePath, '<猫脑过载>');
+                FS.writeFile(savePath, '*err');
                 return;
               }
               resp.text().then((text) => {
                 FS.writeFile(savePath, text);
               }).catch((e) => {
                 console.log(e);
-                FS.writeFile(savePath, '<猫脑过载>');
+                FS.writeFile(savePath, '*err');
               });
             }).catch((e) => {
               console.log(e);
-              FS.writeFile(savePath, '<猫脑过载>');
+              FS.writeFile(savePath, '*err');
             });
             return;
           }
