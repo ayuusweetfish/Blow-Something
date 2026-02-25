@@ -182,7 +182,7 @@ _export void rasterize_fill(int w, int h, int n,
   jcv_myalloc_ptr = 0;
 
   // Distance transform, but we only need the values on the medial axis.
-  // Meijster's algorithm, but the first step is optimized enough already (O(x^3))
+  // Meijster's algorithm, but the first step is optimized enough already (O(x^2 + |MA|*x))
   for (int x = 0; x < w; x++) {
     for (int y = 0; y < h; y++) G(x, y) = -(unsigned)INSIDE(x, y);
     G(x, 0) = min(G(x, 0), 1);
@@ -235,18 +235,18 @@ end
   for (int y = 0; y < h - 0; y++) {
     for (int x = 0; x < w - 0; x++) {
       FF[x] =
-        0.399050279652450 * F(x, y) +
-        0.242036229376110 * ((x < 1 ? 0 : F(x-1, y)) + (x >= w-1 ? 0 : F(x+1, y))) +
-        0.054005582622414 * ((x < 2 ? 0 : F(x-2, y)) + (x >= w-2 ? 0 : F(x+2, y)));
+        0.399050279652450f * F(x, y) +
+        0.242036229376110f * ((x < 1 ? 0 : F(x-1, y)) + (x >= w-1 ? 0 : F(x+1, y))) +
+        0.054005582622414f * ((x < 2 ? 0 : F(x-2, y)) + (x >= w-2 ? 0 : F(x+2, y)));
     }
     for (int x = 0; x < w - 0; x++) F(x, y) = FF[x];
   }
   for (int x = 0; x < w - 0; x++) {
     for (int y = 0; y < h - 0; y++) {
       FF[y] =
-        0.399050279652450 * F(x, y) +
-        0.242036229376110 * ((y < 1 ? 0 : F(x, y-1)) + (y >= h-1 ? 0 : F(x, y+1))) +
-        0.054005582622414 * ((y < 2 ? 0 : F(x, y-2)) + (y >= h-2 ? 0 : F(x, y+2)));
+        0.399050279652450f * F(x, y) +
+        0.242036229376110f * ((y < 1 ? 0 : F(x, y-1)) + (y >= h-1 ? 0 : F(x, y+1))) +
+        0.054005582622414f * ((y < 2 ? 0 : F(x, y-2)) + (y >= h-2 ? 0 : F(x, y+2)));
     }
     for (int y = 0; y < h - 0; y++) F(x, y) = FF[y];
   }
@@ -267,42 +267,47 @@ end
       float nx = -gx * nz, ny = -gy * nz;
 
       // Blinn-Phong specular lighting
-      const float Lx = -1000, Ly = -1000, Lz = 400;
-      float lx = Lx - x, ly = Ly - y, lz = Lz - F(x, y);
-      normalize3(&lx, &ly, &lz);
-      float vx = -x, vy = -y, vz = 1000 - F(x, y);
-      normalize3(&vx, &vy, &vz);
-      float hx = lx + vx, hy = ly + vy, hz = lz + vz;
-      normalize3(&hx, &hy, &hz);
-      float c = hx * nx + hy * ny + hz * nz;
+      // Light at (-N, -N, 0.35 N), viewer at (0, 0, N) where N is very large
+      /*
+        local normalize = function (x, y, z)
+          local d = math.sqrt(x*x + y*y + z*z)
+          return x/d, y/d, z/d
+        end
+        lx, ly, lz = normalize(-1, -1, 0.35)
+        vx, vy, vz = normalize( 0,  0, 1)
+        hx, hy, hz = normalize(lx+vx, ly+vy, lz+vz)
+        print(hx, hy, hz)
+      */
+      // c = h · n
+      float c = (nx + ny) * -0.43582124257856f + 0.78747678634646f * nz;
 
       // Exclude exterior parts
       if (!INSIDE(x, y)) c = 0;
 
       // Debug inspection
-      debug("%2c", INSIDE(x, y) ? (c > 0.95f ? '#' : '*') : '.');
-      // debug("%2c", INSIDE(x, y) ? (G(x, y) ? '#' : '*') : '.');
+      debug("%2c", INSIDE(x, y) ? (c > 0.95f ? '#' : '*') : '.');   // Highlight
+      // debug("%2c", INSIDE(x, y) ? (G(x, y) ? '#' : '*') : '.');     // Medial axis
 
       // Smooth
       float clast = Clast(x, y);
-      Clast(x, y) = c = c + (Clast(x, y) - c) * 0.8f;
+      Clast(x, y) = c = c + (Clast(x, y) - c) * 0.75f;
       // Level 2  ↑0.95 ↓0.90
       // Level 1  ↑0.85 ↓0.80
       int h = Hlast(x, y);
-      if (h < 1 && c >= 0.50) h = 1;
-      if (h < 2 && c >= 0.95) h = 2;
-      if (h >= 2 && c < 0.94) h = 1;
-      if (h >= 1 && c < 0.48) h = 0;
+      if (h < 1 && c >= 0.01f) h = 1;
+      if (h < 2 && c >= 0.95f) h = 2;
+      if (h >= 2 && c < 0.94f) h = 1;
+      if (h >= 1 && c < 0.00f) h = 0;
       Hlast(x, y) = h;
       if (h == 2) {
-        pix_buf[(y * w + x) * 4 + 0] = 255 - (255 - pix_buf[(y * w + x) * 4 + 0]) * .4;
-        pix_buf[(y * w + x) * 4 + 1] = 255 - (255 - pix_buf[(y * w + x) * 4 + 1]) * .4;
-        pix_buf[(y * w + x) * 4 + 2] = 255 - (255 - pix_buf[(y * w + x) * 4 + 2]) * .4;
-        pix_buf[(y * w + x) * 4 + 3] = 255 - (255 - pix_buf[(y * w + x) * 4 + 3]) * .4;
+        pix_buf[(y * w + x) * 4 + 0] = 255 - ((255 - pix_buf[(y * w + x) * 4 + 0]) * 10 / 16);
+        pix_buf[(y * w + x) * 4 + 1] = 255 - ((255 - pix_buf[(y * w + x) * 4 + 1]) * 10 / 16);
+        pix_buf[(y * w + x) * 4 + 2] = 255 - ((255 - pix_buf[(y * w + x) * 4 + 2]) * 10 / 16);
+        pix_buf[(y * w + x) * 4 + 3] = 255 - (int)((1 - opacity) * 0.5f * 255);
       } else if (h == 1) {
-        pix_buf[(y * w + x) * 4 + 0] = 255 - (255 - pix_buf[(y * w + x) * 4 + 0]) * .8;
-        pix_buf[(y * w + x) * 4 + 1] = 255 - (255 - pix_buf[(y * w + x) * 4 + 1]) * .8;
-        pix_buf[(y * w + x) * 4 + 2] = 255 - (255 - pix_buf[(y * w + x) * 4 + 2]) * .8;
+        pix_buf[(y * w + x) * 4 + 0] = 255 - ((255 - pix_buf[(y * w + x) * 4 + 0]) * 14 / 16);
+        pix_buf[(y * w + x) * 4 + 1] = 255 - ((255 - pix_buf[(y * w + x) * 4 + 1]) * 14 / 16);
+        pix_buf[(y * w + x) * 4 + 2] = 255 - ((255 - pix_buf[(y * w + x) * 4 + 2]) * 14 / 16);
       }
     }
     debug("\n");
