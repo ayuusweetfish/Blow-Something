@@ -121,7 +121,7 @@ _export void rasterize_fill(int w, int h, int n,
   for (int x = 0; x < w; x++) {
     G(x, 0) = min(G(x, 0), 1);
     G(x, h - 1) = min(G(x, h - 1), 1);
-    for (int y = 0; y < h; y++)
+    for (int y = 1; y < h; y++)
       G(x, y) = min(G(x, y), G(x, y - 1) + 1);
     for (int y = h - 1; y >= 0; y--)
       G(x, y) = min(G(x, y), G(x, y + 1) + 1);
