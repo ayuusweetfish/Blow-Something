@@ -1,4 +1,4 @@
-// emcc -O3 --no-entry -s TOTAL_STACK=65536 -s INITIAL_MEMORY=1048576 -o polygon_rast.wasm polygon_rast.c
+// emcc -O3 -DNDEBUG --no-entry -s TOTAL_STACK=65536 -s INITIAL_MEMORY=2097152 -o polygon_rast.wasm polygon_rast.c
 
 #define _export
 
@@ -9,10 +9,17 @@
 #endif
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-#define PIX_BUF_SIZE (180 * 200 * 4)
+#define JC_VORONOI_IMPLEMENTATION
+#include "jc_voronoi/jc_voronoi.h"
+
+#define MAX_SIDE 200
+#define N_PIXELS (180 * 200)
+
+#define PIX_BUF_SIZE (N_PIXELS * 4)
 static uint8_t pix_buf[PIX_BUF_SIZE];
 _export uint8_t *get_pix_buf() { return pix_buf; }
 
@@ -41,13 +48,42 @@ static inline void normalize3(float *x, float *y, float *z)
   *x /= d; *y /= d; *z /= d;
 }
 
+static bool point_in_polygon(const float *a, int n, float x, float y)
+{
+  // Winding number with optimization by W. Randolph Franklin
+  // https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
+  float x0 = x, y0 = y;
+  bool c = false;
+  for (int i = 0; i < n; i++) {
+    float x1 = a[i * 2], y1 = a[i * 2 + 1];
+    float x2 = a[((i + 1) % n) * 2], y2 = a[((i + 1) % n) * 2 + 1];
+    c ^= (((y2 > y0) != (y1 > y0)) &&
+          x0 < (x1 - x2) * (y0 - y2) / (y1 - y2) + x2);
+  }
+  return c;
+}
+
+static uint8_t jcv_myalloc_buf[131072 * 8];
+static size_t jcv_myalloc_ptr;
+static void *jcv_myalloc(void *_unused, size_t n)
+{
+  void *p = jcv_myalloc_buf + jcv_myalloc_ptr;
+  debug("alloc %p %zu\n", p, n);
+  jcv_myalloc_ptr += n;
+  return p;
+}
+static void jcv_myfree(void *_unused, void *p)
+{
+  debug("free  %p\n", p);
+}
+
 _export void rasterize_fill(int w, int h, int n,
   float r, float g, float b, float opacity, int t)
 {
   // Scratch space for Meijster's algorithm
-  static unsigned G[PIX_BUF_SIZE / 4];
-  static unsigned D[PIX_BUF_SIZE / 4];
-  static float F[PIX_BUF_SIZE / 4];
+  static unsigned G[N_PIXELS];
+  static unsigned D[N_PIXELS];
+  static float F[N_PIXELS];
   for (int i = 0; i < w * h; i++) G[i] = 0;
   #define G(_x, _y) (G[(_x) + (_y) * w])
   #define D(_x, _y) (D[(_x) + (_y) * w])
@@ -110,28 +146,79 @@ _export void rasterize_fill(int w, int h, int n,
     }
   }
 
-  for (int y = 1; y < h - 1; y++) {
-    for (int x = 1; x < w - 1; x++) {
-      float maxd = 0;
-      for (int dy = -1; dy <= 1; dy++)
-        for (int dx = -1; dx <= 1; dx++) if (dx && dy) {
-          float d = (sqrt(D(x + dx, y + dy)) - sqrt(D(x, y))) / sqrtf(dx * dx + dy * dy);
-          if (maxd < d) maxd = d;
+  // Medial axis from Voronoi diagram
+  // Deduplication. To draw a pixel, mark G(x, y) as 1 and add the coordinates to `ma[n_ma++]`.
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) G(x, y) = 0;
+  int n_ma = 0;
+  static uint8_t ma[N_PIXELS][2];
+
+  static jcv_diagram diagram;
+  diagram = (jcv_diagram){0};
+  jcv_diagram_generate_useralloc(
+    n, (void *)pt_buf, &(jcv_rect){{-10, -10}, {10 + w, 10 + h}}, NULL,
+    NULL, jcv_myalloc, jcv_myfree, &diagram);
+
+  // XXX: Edge filtering can also be done in total O(n log n) time by
+  // building the node-edge graph of the Voronoi diagram and removing
+  // all vertices connected to the infinite vertices. See `backups/highlight_test/main.c`
+  // However, as n is small (<= 256) we simply do quadratic.
+  const jcv_edge* edge = jcv_diagram_get_edges(&diagram);
+  while (edge != NULL) {
+    if (point_in_polygon(pt_buf, n, edge->pos[0].x, edge->pos[0].y) &&
+        point_in_polygon(pt_buf, n, edge->pos[1].x, edge->pos[1].y)) {
+      debug("Segment((%.4f, %.4f), (%.4f, %.4f)),\n",
+        edge->pos[0].x, edge->pos[0].y,
+        edge->pos[1].x, edge->pos[1].y);
+
+      // Trace line with Bresenham's Algorithm, working in fixed-point
+
+      const int SUBPX = 4;
+      int x1_fixed = (int)(edge->pos[0].x * (1 << SUBPX) + 0.5);
+      int y1_fixed = (int)(edge->pos[0].y * (1 << SUBPX) + 0.5);
+      int x2_fixed = (int)(edge->pos[1].x * (1 << SUBPX) + 0.5);
+      int y2_fixed = (int)(edge->pos[1].y * (1 << SUBPX) + 0.5);
+
+      int dx = abs(x2_fixed - x1_fixed);
+      int dy = abs(y2_fixed - y1_fixed);
+      int sx = (x2_fixed > x1_fixed) ? 1 : -1;
+      int sy = (y2_fixed > y1_fixed) ? 1 : -1;
+
+      int x = x1_fixed;
+      int y = y1_fixed;
+      int err = dx - dy;
+      while (1) {
+        int pixel_x = x >> SUBPX;
+        int pixel_y = y >> SUBPX;
+        if (pixel_x >= 0 && pixel_x < w && pixel_y >= 0 && pixel_y < h) {
+          if (!G(pixel_x, pixel_y)) {
+            G(pixel_x, pixel_y) = 1;
+            ma[n_ma][0] = (uint8_t)pixel_x;
+            ma[n_ma][1] = (uint8_t)pixel_y;
+            n_ma++;
+          }
         }
-      unsigned is_medial = maxd < 0.95;
-      G(x, y) = is_medial;
+        if (x == x2_fixed && y == y2_fixed) break;
+        int e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; x += sx; }
+        if (e2 <  dx) { err += dx; y += sy; }
+      }
+
     }
+    edge = jcv_diagram_get_next_edge(edge);
   }
+
+  jcv_diagram_free(&diagram);
+  jcv_myalloc_ptr = 0;
 
   // F(P) = max_C (sqrt(D(C)^2 - (P-C)^2)),
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       int f = 0;
-      for (int y1 = 0; y1 < h; y1++) {
-        for (int x1 = 0; x1 < w; x1++) if (G(x, y)) {
-          int f1 = D(x1, y1) - (x1-x)*(x1-x) - (y1-y)*(y1-y);
-          if (f < f1) f = f1;
-        }
+      for (int i = 0; i < n_ma; i++) {
+        int x1 = ma[i][0], y1 = ma[i][1];
+        int f1 = D(x1, y1) - (x1-x)*(x1-x) - (y1-y)*(y1-y);
+        if (f < f1) f = f1;
       }
       F(x, y) = sqrtf(f);
     }
@@ -142,8 +229,39 @@ _export void rasterize_fill(int w, int h, int n,
     debug("\n");
   }
 
-  for (int y = 1; y < h - 1; y++) {
-    for (int x = 1; x < w - 1; x++) {
+/*
+sigma = 1
+n = 3
+sum = 0
+for i = 0, 3 do
+  sum = sum + math.exp(-i * i / (2 * sigma * sigma)) * (i == 0 and 1 or 2)
+end
+for i = 0, 3 do
+  print(math.exp(-i * i / (2 * sigma * sigma)) / sum)
+end
+*/
+  static float FF[200];
+  for (int y = 0; y < h - 0; y++) {
+    for (int x = 0; x < w - 0; x++) {
+      FF[x] =
+        0.399050279652450 * F(x, y) +
+        0.242036229376110 * ((x < 1 ? 0 : F(x-1, y)) + (x >= w-1 ? 0 : F(x+1, y))) +
+        0.054005582622414 * ((x < 2 ? 0 : F(x-2, y)) + (x >= w-2 ? 0 : F(x+2, y)));
+    }
+    for (int x = 0; x < w - 0; x++) F(x, y) = FF[x];
+  }
+  for (int x = 0; x < w - 0; x++) {
+    for (int y = 0; y < h - 0; y++) {
+      FF[y] =
+        0.399050279652450 * F(x, y) +
+        0.242036229376110 * ((y < 1 ? 0 : F(x, y-1)) + (y >= h-1 ? 0 : F(x, y+1))) +
+        0.054005582622414 * ((y < 2 ? 0 : F(x, y-2)) + (y >= h-2 ? 0 : F(x, y+2)));
+    }
+    for (int y = 0; y < h - 0; y++) F(x, y) = FF[y];
+  }
+
+  for (int y = 2; y < h - 2; y++) {
+    for (int x = 2; x < w - 2; x++) {
       float gx = (
         (F(x+1, y-1) + 2 * F(x+1, y) + F(x+1, y+1)) -
         (F(x-1, y-1) + 2 * F(x-1, y) + F(x-1, y+1))
@@ -162,15 +280,14 @@ _export void rasterize_fill(int w, int h, int n,
       float hx = lx + vx, hy = ly + vy, hz = lz + vz;
       normalize3(&hx, &hy, &hz);
       float c = hx * nx + hy * ny + hz * nz;
-      unsigned is_highlight = (c > 0.95);
+      unsigned is_highlight = (D(x, y) > 0 && c > 0.95);
       // debug("%2c", D(x, y) > 0 ? (is_highlight ? '#' : '*') : '.');
       debug("%2c", D(x, y) > 0 ? (G(x, y) ? '#' : '*') : '.');
-      pix_buf[(y * w + x) * 4 + 3] = (int)((c < 0 ? 0 : c) * 255);
       if (is_highlight) {
-        pix_buf[(y * w + x) * 4 + 0] = 255;
-        pix_buf[(y * w + x) * 4 + 1] = 255;
-        pix_buf[(y * w + x) * 4 + 2] = 255;
-        pix_buf[(y * w + x) * 4 + 2] = 255;
+        pix_buf[(y * w + x) * 4 + 0] = 255 - (255 - pix_buf[(y * w + x) * 4 + 0]) * .4;
+        pix_buf[(y * w + x) * 4 + 1] = 255 - (255 - pix_buf[(y * w + x) * 4 + 1]) * .4;
+        pix_buf[(y * w + x) * 4 + 2] = 255 - (255 - pix_buf[(y * w + x) * 4 + 2]) * .4;
+        pix_buf[(y * w + x) * 4 + 3] = 255 - (255 - pix_buf[(y * w + x) * 4 + 3]) * .4;
       }
     }
     debug("\n");

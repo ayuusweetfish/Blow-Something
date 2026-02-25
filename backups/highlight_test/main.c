@@ -1,5 +1,5 @@
 // cc -O2 -DJC_VORONOI_IMPLEMENTATION -x c jc_voronoi/jc_voronoi.h -c -o jc_voronoi.o
-// cc -Ijc_voronoi % jc_voronoi.o && ./a.out
+// cc % -DJC_VORONOI_IMPLEMENTATION -lm
 
 #include <math.h>
 #include <stdint.h>
@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "jc_voronoi.h"
+#include "jc_voronoi/jc_voronoi.h"
 
 #ifndef M_PI
 #define M_PI 3.141592653589793
@@ -32,7 +32,7 @@ static int cmp_vertex(const void *_a, const void *_b)
 
 int main()
 {
-  const int n = 100;
+  const int n = 20;
   jcv_point points[n];
 
   for (int i = 0; i < n; i++) {
@@ -41,9 +41,13 @@ int main()
     points[i].y = 1.7f * sinf(phi) - 0.2f * sinf(3 * phi);
   }
 
+  for (int i = 0; i < n; i++)
+    printf("(%.4f, %.4f), ", points[i].x, points[i].y);
+  printf("\n");
+
   jcv_diagram diagram;
   memset(&diagram, 0, sizeof(jcv_diagram));
-  jcv_diagram_generate(n, points, &(jcv_rect){{-10.0f, -10.0f}, {10.0f, 10.0f}}, NULL, &diagram);
+  jcv_diagram_generate(n, points, &(jcv_rect){{-10.0f, -10.0f}, {30.0f, 30.0f}}, NULL, &diagram);
 
   struct edge_vertex v[n * 6];
   int n_e = 0;
@@ -86,7 +90,7 @@ int main()
     printf("Segment((%.4f, %.4f), (%.4f, %.4f)),\n",
       v[i * 2 + 0].x, v[i * 2 + 0].y,
       v[i * 2 + 1].x, v[i * 2 + 1].y);
-    printf("  %u %u\n", (unsigned)v[i * 2 + 0].vertex_id, (unsigned)v[i * 2 + 1].vertex_id);
+    // printf("  %u %u\n", (unsigned)v[i * 2 + 0].vertex_id, (unsigned)v[i * 2 + 1].vertex_id);
   }
 
   return 0;
