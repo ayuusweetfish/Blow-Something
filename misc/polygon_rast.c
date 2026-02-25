@@ -35,6 +35,12 @@ static inline float snoise3(float x, float y, float z);
 #define debug(...)
 #endif
 
+static inline void normalize3(float *x, float *y, float *z)
+{
+  float d = sqrtf(*x * *x + *y * *y + *z * *z);
+  *x /= d; *y /= d; *z /= d;
+}
+
 _export void rasterize_fill(int w, int h, int n,
   float r, float g, float b, float opacity, int t)
 {
@@ -94,10 +100,6 @@ _export void rasterize_fill(int w, int h, int n,
     for (int y = h - 1; y >= 0; y--)
       G(x, y) = min(G(x, y), G(x, y + 1) + 1);
   }
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) debug("%5u", G(x, y));
-    debug("\n");
-  }
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
@@ -123,7 +125,7 @@ _export void rasterize_fill(int w, int h, int n,
   }
 
   for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) debug("%5.2f", F(x, y));
+    for (int x = 0; x < w; x++) debug("%5.1f", F(x, y));
     debug("\n");
   }
 
@@ -137,8 +139,13 @@ _export void rasterize_fill(int w, int h, int n,
         (F(x-1, y-1) + 2 * F(x, y-1) + F(x+1, y-1));
       float nz = 1. / sqrtf(gx * gx + gy * gy + 1);
       float nx = -gx * nz, ny = -gy * nz;
-      const float Cx = -7, Cy = -7, Cz = 5, Cn = sqrtf(Cx*Cx + Cy*Cy + Cz*Cz);
-      float c = (nx * Cx/Cn + ny * Cy/Cn + nz * Cz/Cn);
+      const float Lx = -1, Ly = -1, Lz = (w + h) / 4.0f;
+      float lx = Lx - x, ly = Ly - y, lz = Lz - F(x, y);
+      float vx = -x, vy = -y, vz = -F(x, y);
+      normalize3(&vx, &vy, &vz);
+      float hx = lx + vx, hy = ly + vy, hz = lz + vz;
+      normalize3(&hx, &hy, &hz);
+      float c = hx * nx + hy * ny + hz * nz;
       unsigned is_highlight = (c > 0.95);
       debug("%2c", G(x, y) > 0 ? (is_highlight ? '#' : '*') : '.');
       // debug("%4.1f %4.1f  ", gx, gy);
