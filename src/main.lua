@@ -200,6 +200,9 @@ function love.draw()
 end
 
 function love.keypressed(key)
+  if love.system.getOS() ~= 'Web' and key == 'escape' then
+    love.event.quit()
+  end
   if curScene.key then curScene.key(key) end
   if true then return end
   if key == 'lshift' then
