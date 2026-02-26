@@ -1124,7 +1124,8 @@ return function ()
       end
     else
       drawTail()
-      local catBodyFrame = math.floor(T / 30) % 4 + 1
+      local catBodyFrame = math.floor(T / 30) % 8 + 1
+      if catBodyFrame > 4 then catBodyFrame = 9 - catBodyFrame end
       draw.img('cat_idle/' .. tostring(catBodyFrame), 10 - 19, 198 - 20)
     end
 
