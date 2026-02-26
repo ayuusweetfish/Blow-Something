@@ -55,6 +55,12 @@ return function (drawable, fn)
   end
 
   s.draw = function ()
+    if not s.enabled then return end
+    if s.inside then
+      love.graphics.setColor(0.6, 0.6, 0.6)
+    else
+      love.graphics.setColor(1, 1, 1)
+    end
     local sc = scale * s.s
     local x, y, sc = s.x - w/2 * sc, s.y - h/2 * sc, sc
     if s.drawable.draw then

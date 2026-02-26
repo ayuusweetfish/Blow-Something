@@ -47,6 +47,25 @@ else
   fetchResponse = function () return chResp:pop() end
 end
 
+local saveImage
+if love.system.getOS() == 'Web' then
+  saveImage = function (imgData)
+    -- The encoding module is not compiled in
+    -- local fileData = imgData:encode('png')
+    local f = io.open('/tmp/photo.bin', 'wb')
+    f:write(imgData:getString())
+    f:close()
+    print('#/tmp/photo.bin ' .. imgData:getFormat())
+  end
+else
+  saveImage = function (imgData)
+    local fileData = imgData:encode('png')
+    local f = io.open('/tmp/photo.png', 'wb')
+    f:write(fileData:getString())
+    f:close()
+  end
+end
+
 love.physics.setMeter(1)
 
 local createBubbles = function (n, max_x, max_y)
@@ -680,6 +699,23 @@ return function ()
   end)
   buttons[#buttons + 1] = btnStick
 
+  local imgCamera = draw.get('camera')
+  local btnCamera = button(imgCamera, function ()
+    local canvas = love.graphics.newCanvas(W, H, { dpiscale = 1 })
+    love.graphics.setCanvas(canvas)
+    love.graphics.clear(1, 1, 1, 1)
+    love.graphics.push()
+    love.graphics.scale(W / (love.graphics.getDimensions()))
+    s.draw(true)
+    love.graphics.setCanvas()
+    love.graphics.pop()
+    local img = canvas:newImageData()
+    saveImage(img)
+  end)
+  btnCamera.x = 143 + imgCamera:getWidth() / 2
+  btnCamera.y = 263 + imgCamera:getHeight() / 2
+  buttons[#buttons + 1] = btnCamera
+
   local selPaint = { 1, .19, .30 }
   -- Palette buttons
   local paletteButton = function (x, y, w, h, r, g, b)
@@ -963,7 +999,7 @@ return function ()
     )
   end
 
-  s.draw = function ()
+  s.draw = function (isScreenshot)
     love.graphics.setColor(1, 1, 1)
     local backgroundFrame = 0
     if catBingoSince >= 0 then
@@ -1073,10 +1109,15 @@ return function ()
     end
     draw.img('bottle', 132, 237)
     draw.img('palette', 42, 262)
-    draw.img('camera', 143, 263)
+    if isScreenshot then
+      draw.img('camera', 143, 263)
+    else
+      btnCamera.draw()
+    end
 
     -- Rewards
     -- Fish task goes behind others
+    love.graphics.setColor(1, 1, 1)
     if rewardCount >= 10 then
       local frame = math.floor(T / 60) % 10 + 1
       draw.img('rewards/10_' .. tostring(frame), rewardPositions[10][1], rewardPositions[10][2])
@@ -1112,7 +1153,9 @@ return function ()
       end
     end
 
-    btnLang.draw()
+    if not isScreenshot then
+      btnLang.draw()
+    end
 
     love.graphics.setColor(1, 1, 1)
   end

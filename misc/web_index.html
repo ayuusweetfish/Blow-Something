@@ -119,6 +119,17 @@
               FS.writeFile(savePath, '*err');
             });
             return;
+          } else if (text[0] === '#') {
+            var args = text.substring(1).split(' ');
+            var photoPath = args[0];
+            var format = args[1];
+            var photoContent = FS.readFile(photoPath);
+            console.log(photoPath, format, photoContent);
+            FS.unlink(photoPath);
+            return;
+          } else if (text[0] === '!') {
+            console.log(text.substring(1));
+            return;
           }
           if (loadingText !== null) {
             if (text !== '*finish') {

@@ -83,17 +83,6 @@ _G['btnLang'] = function ()
   btnLang.x = 25
   btnLang.y = 20
 
-  local drawOrig = btnLang.draw
-  btnLang.draw = function ()
-    if not btnLang.enabled then return end
-    if btnLang.inside then
-      love.graphics.setColor(0.6, 0.6, 0.6)
-    else
-      love.graphics.setColor(1, 1, 1)
-    end
-    drawOrig()
-  end
-
   return btnLang
 end
 
