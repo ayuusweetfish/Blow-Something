@@ -177,7 +177,8 @@ function processPrintedText(text) {
         arguments: ["./game.love"],
         INITIAL_MEMORY: 134217728,
         print: function (text) {
-          try {   // Catch all errors; if they propogate outside *bad things happen* > <
+          // Catch all errors; if they propogate outside *bad things happen* > <
+          try {
             processPrintedText(text);
             if (loadingText !== null) {
               if (text !== '*finish') {

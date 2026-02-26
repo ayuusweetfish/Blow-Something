@@ -703,7 +703,7 @@ return function ()
   local imgCamera = draw.get('camera')
   local screenshotFormat = nil  -- Fall back to default
   local supportedFormats = love.graphics.getCanvasFormats()
-  for _, format in ipairs({'rgba16f', 'rgba4'}) do
+  for _, format in ipairs({'rgba8', 'rgba16f', 'rgba4'}) do
     if supportedFormats[format] then
       screenshotFormat = format
       break
@@ -724,7 +724,8 @@ return function ()
   end)
   btnCamera.x = 143 + imgCamera:getWidth() / 2
   btnCamera.y = 263 + imgCamera:getHeight() / 2
-  buttons[#buttons + 1] = btnCamera
+  table.insert(buttons, 1, btnCamera)
+    -- The stick button is destructive; avoid unintended triggers
 
   local selPaint = { 1, .19, .30 }
   -- Palette buttons
