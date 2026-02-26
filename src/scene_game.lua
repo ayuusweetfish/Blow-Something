@@ -700,6 +700,8 @@ return function ()
   end)
   buttons[#buttons + 1] = btnStick
 
+  local sinceCamera = -1
+
   local imgCamera = draw.get('camera')
   local screenshotFormat = nil  -- Fall back to default
   local supportedFormats = love.graphics.getCanvasFormats()
@@ -710,6 +712,8 @@ return function ()
     end
   end
   local btnCamera = button(imgCamera, function ()
+    audio.sfx('camera')
+    sinceCamera = 0
     local canvas = love.graphics.newCanvas(W, H,
       { dpiscale = 1, format = screenshotFormat })
     love.graphics.setCanvas(canvas)
@@ -975,6 +979,11 @@ return function ()
 
     particles.update()
 
+    if sinceCamera >= 0 then
+      sinceCamera = sinceCamera + 1
+      if sinceCamera == 240 then sinceCamera = -1 end
+    end
+
     local resp = fetchResponse()
     if resp ~= nil then
       recognitionResult = resp
@@ -1166,6 +1175,12 @@ return function ()
 
     if not isScreenshot then
       btnLang.draw()
+      if sinceCamera >= 0 then
+        local x = math.min(sinceCamera / 80, 1)
+        local alpha = (1 - (x ^ 0.2)) * (1 - x)
+        love.graphics.setColor(0.95, 0.95, 0.95, alpha)
+        love.graphics.rectangle('fill', 0, 0, W, H)
+      end
     end
 
     love.graphics.setColor(1, 1, 1)
