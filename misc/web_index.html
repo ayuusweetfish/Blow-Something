@@ -66,6 +66,7 @@
         arguments: ["./game.love"],
         INITIAL_MEMORY: 134217728,
         print: function (text) {
+        try {   // Catch all errors; if they propogate outside *bad things happen* > <
           if (text[0] === '+') {
             const op = text[1];
             const fields = text.substring(3).split(' ');
@@ -125,7 +126,51 @@
             var w = args[1], h = args[2], format = args[3];
             var photoContent = FS.readFile(photoPath);
             console.log(photoPath, w, h, format, photoContent);
-            if (format !== 'rgba16f') {
+
+function downloadRgba16fAsPng(photoContent, w, h) {
+  // Convert rgba16f to rgba8 (sRGB)
+
+  // Represent float16 with uint16
+  const floatPix = new Uint16Array(photoContent.buffer, photoContent.byteOffset, photoContent.byteLength / 2);
+  const rgba8 = new Uint8ClampedArray(w * h * 4);
+
+  // 1 sign, 5 exponent, 10 mantissa
+  function decodeFloat16(binary) {
+    const exponent = (binary & 0x7C00) >> 10;
+    const fraction = (binary & 0x03FF);
+    const sign = (binary & 0x8000) ? -1 : 1;
+    if (exponent === 0) {
+      return sign * Math.pow(2, -14) * (fraction / 1024);
+    } else if (exponent === 0x1F) {
+      return fraction ? NaN : sign * Infinity;
+    }
+    return sign * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
+  }
+
+  for (let i = 0; i < floatPix.length; i++)
+    rgba8[i] = Math.min(255, Math.max(0, decodeFloat16(floatPix[i]) * 255));
+
+  // Draw the pixels to a canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const imageData = new ImageData(rgba8, w, h);
+  ctx.putImageData(imageData, 0, 0);
+
+  canvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Blow-Something.png`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+            if (format === 'rgba16f') {
+              downloadRgba16fAsPng(photoContent, w, h);
+            } else {
               alert('We cannot take a screenshot in your browser >-<');
             }
             FS.unlink(photoPath);
@@ -142,6 +187,9 @@
               loadingText = null;
             }
           }
+        } catch (e) {
+          console.log(e);
+        }
         },
         printErr: console.error.bind(console),
         canvas: (function() {
