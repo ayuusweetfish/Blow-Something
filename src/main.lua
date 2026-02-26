@@ -35,6 +35,7 @@ local fontSizeFactory = function (path, preload)
         font[size] = love.graphics.newFont(size)
       else
         font[size] = love.graphics.newFont(path, size)
+        font[size]:setFilter('nearest', 'nearest', 0)
       end
     end
   end
@@ -44,13 +45,14 @@ local fontSizeFactory = function (path, preload)
         font[size] = love.graphics.newFont(size)
       else
         font[size] = love.graphics.newFont(path, size)
+        font[size]:setFilter('nearest', 'nearest', 0)
       end
     end
     return font[size]
   end
 end
-_G['global_font'] = fontSizeFactory('fnt/WenQuanYi_Bitmap_Song_14px.ttf', {28, 36})
-love.graphics.setFont(_G['global_font'](40))
+_G['global_font'] = fontSizeFactory('fnt/WenQuanYi_Bitmap_Song_14px.ttf', {15})
+love.graphics.setFont(_G['global_font'](15))
 
 local audio = require 'audio'
 local bgm, bgm_update = audio.loop(
