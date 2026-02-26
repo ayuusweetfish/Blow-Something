@@ -141,8 +141,10 @@ function processPrintedText(text) {
         return sign * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
       }
 
-      for (let i = 0; i < floatPix.length; i++)
-        rgba8[i] = Math.min(255, Math.max(0, decodeFloat16(floatPix[i]) * 255));
+      for (let i = 0; i < floatPix.length; i++) {
+        let r = decodeFloat16(floatPix[i]);
+        rgba8[i] = Math.min(255, Math.max(0, r * 255));
+      }
 
       // Draw the pixels to a canvas
       const canvas = document.createElement('canvas');
