@@ -68,13 +68,8 @@ _export void rasterize_fill(int w, int h, int n,
   // Scratch space for Meijster's algorithm
   static unsigned G[N_PIXELS];
   static float F[N_PIXELS];
-  static float Clast[N_PIXELS];
-  static unsigned char Hlast[N_PIXELS];
-  for (int i = 0; i < w * h; i++) G[i] = 0;
   #define G(_x, _y) (G[(_x) + (_y) * w])
   #define F(_x, _y) (F[(_x) + (_y) * w])
-  #define Clast(_x, _y) (Clast[(_x) + (_y) * w])
-  #define Hlast(_x, _y) (Hlast[(_x) + (_y) * w])
 
   // Clear texture
   for (int i = 0; i < w * h * 4; i++) pix_buf[i] = 0;
@@ -119,12 +114,27 @@ _export void rasterize_fill(int w, int h, int n,
 
   #define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
-  // Medial axis from Voronoi diagram
-  // Deduplication. To draw a pixel, mark G(x, y) as 1 and add the coordinates to `ma[n_ma++]`.
+  // Distance transform, but we only need the values on the medial axis.
+  // Meijster's algorithm, but the first step is optimized enough already (O(x^2 + |MA|*x))
+  for (int x = 0; x < w; x++) {
+    for (int y = 0; y < h; y++) G(x, y) = -(unsigned)INSIDE(x, y);
+    G(x, 0) = min(G(x, 0), 1);
+    G(x, h - 1) = min(G(x, h - 1), 1);
+    for (int y = 1; y < h; y++)
+      G(x, y) = min(G(x, y), G(x, y - 1) + 1);
+    for (int y = h - 1; y >= 0; y--)
+      G(x, y) = min(G(x, y), G(x, y + 1) + 1);
+  }
+
   for (int y = 0; y < h; y++)
-    for (int x = 0; x < w; x++) G(x, y) = 0;
-  int n_ma = 0;
-  static struct { uint8_t x, y; unsigned d; } ma[N_PIXELS];
+    for (int x = 0; x < w; x++) F(x, y) = 0;
+
+  // Medial axis from Voronoi diagram
+  // Deduplication
+  static unsigned MA[N_PIXELS];
+  #define MA(_x, _y) (MA[(_x) + (_y) * w])
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) MA(x, y) = 0;
 
   static jcv_diagram diagram;
   diagram = (jcv_diagram){0};
@@ -163,11 +173,23 @@ _export void rasterize_fill(int w, int h, int n,
         int pixel_x = x >> SUBPX;
         int pixel_y = y >> SUBPX;
         if (pixel_x >= 0 && pixel_x < w && pixel_y >= 0 && pixel_y < h) {
-          if (!G(pixel_x, pixel_y)) {
-            G(pixel_x, pixel_y) = 1;
-            ma[n_ma].x = pixel_x;
-            ma[n_ma].y = pixel_y;
-            n_ma++;
+          if (!MA(pixel_x, pixel_y)) {
+            MA(pixel_x, pixel_y) = 1;
+            unsigned d = (w + h) * (w + h);
+            int x = pixel_x, y = pixel_y;   // Shorter names for clarity
+            for (int j = 0; j < w; j++)
+              d = min(d, (x - j) * (x - j) + G(j, y) * G(j, y));
+            debug("%d %d %u\n", pixel_x, pixel_y, d);
+            // Update F in the bounding box, with current centre C(x, y)
+            // F(P) = max_C (sqrt(D(C)^2 - (P-C)^2))
+            unsigned sqrtd = (unsigned)sqrtf(d);
+            for (int py = y - sqrtd; py <= y + sqrtd; py++)
+            if (py >= 0 && py < h)
+              for (int px = x - sqrtd; px <= x + sqrtd; px++)
+              if (px >= 0 && px < w && INSIDE(px, py)) {
+                int f = d - (px-x)*(px-x) - (py-y)*(py-y);
+                if (F(px, py) < f) F(px, py) = f;
+              }
           }
         }
         if (x == x2_fixed && y == y2_fixed) break;
@@ -181,38 +203,8 @@ _export void rasterize_fill(int w, int h, int n,
   jcv_diagram_free(&diagram);
   jcv_myalloc_ptr = 0;
 
-  // Distance transform, but we only need the values on the medial axis.
-  // Meijster's algorithm, but the first step is optimized enough already (O(x^2 + |MA|*x))
-  for (int x = 0; x < w; x++) {
-    for (int y = 0; y < h; y++) G(x, y) = -(unsigned)INSIDE(x, y);
-    G(x, 0) = min(G(x, 0), 1);
-    G(x, h - 1) = min(G(x, h - 1), 1);
-    for (int y = 1; y < h; y++)
-      G(x, y) = min(G(x, y), G(x, y - 1) + 1);
-    for (int y = h - 1; y >= 0; y--)
-      G(x, y) = min(G(x, y), G(x, y + 1) + 1);
-  }
-
-  for (int i = 0; i < n_ma; i++) {
-    int x = ma[i].x, y = ma[i].y;
-    unsigned d = (w + h) * (w + h);
-    for (int j = 0; j < w; j++)
-      d = min(d, (x - j) * (x - j) + G(j, y) * G(j, y));
-    ma[i].d = d;
-  }
-
-  // F(P) = max_C (sqrt(D(C)^2 - (P-C)^2)),
-  for (int y = 0; y < h; y++) {
-    for (int x = 0; x < w; x++) {
-      int f = 0;
-      for (int i = 0; i < n_ma; i++) {
-        int x1 = ma[i].x, y1 = ma[i].y;
-        int f1 = ma[i].d - (x1-x)*(x1-x) - (y1-y)*(y1-y);
-        if (f < f1) f = f1;
-      }
-      F(x, y) = sqrtf(f);
-    }
-  }
+  for (int y = 0; y < h; y++)
+    for (int x = 0; x < w; x++) F(x, y) = sqrtf(F(x, y));
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) debug("%5.1f", F(x, y));
@@ -231,7 +223,7 @@ for i = 0, 3 do
   print(math.exp(-i * i / (2 * sigma * sigma)) / sum)
 end
 */
-  static float FF[200];
+  static float FF[MAX_SIDE];
   for (int y = 0; y < h - 0; y++) {
     for (int x = 0; x < w - 0; x++) {
       FF[x] =
@@ -250,6 +242,12 @@ end
     }
     for (int y = 0; y < h - 0; y++) F(x, y) = FF[y];
   }
+
+  // Previous record for smoothing and hysteresis
+  static float Clast[N_PIXELS];
+  static unsigned char Hlast[N_PIXELS];
+  #define Clast(_x, _y) (Clast[(_x) + (_y) * w])
+  #define Hlast(_x, _y) (Hlast[(_x) + (_y) * w])
 
   // The light!
   for (int y = 1; y < h - 1; y++) {
