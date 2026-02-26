@@ -122,9 +122,12 @@
           } else if (text[0] === '#') {
             var args = text.substring(1).split(' ');
             var photoPath = args[0];
-            var format = args[1];
+            var w = args[1], h = args[2], format = args[3];
             var photoContent = FS.readFile(photoPath);
-            console.log(photoPath, format, photoContent);
+            console.log(photoPath, w, h, format, photoContent);
+            if (format !== 'rgba16f') {
+              alert('We cannot take a screenshot in your browser >-<');
+            }
             FS.unlink(photoPath);
             return;
           } else if (text[0] === '!') {

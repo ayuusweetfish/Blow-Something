@@ -55,7 +55,8 @@ if love.system.getOS() == 'Web' then
     local f = io.open('/tmp/photo.bin', 'wb')
     f:write(imgData:getString())
     f:close()
-    print('#/tmp/photo.bin ' .. imgData:getFormat())
+    print(string.format('#/tmp/photo.bin %d %d %s',
+      imgData:getWidth(), imgData:getHeight(), imgData:getFormat()))
   end
 else
   saveImage = function (imgData)
@@ -700,8 +701,17 @@ return function ()
   buttons[#buttons + 1] = btnStick
 
   local imgCamera = draw.get('camera')
+  local screenshotFormat = nil  -- Fall back to default
+  local supportedFormats = love.graphics.getCanvasFormats()
+  for _, format in ipairs({'rgba16f', 'rgba4'}) do
+    if supportedFormats[format] then
+      screenshotFormat = format
+      break
+    end
+  end
   local btnCamera = button(imgCamera, function ()
-    local canvas = love.graphics.newCanvas(W, H, { dpiscale = 1 })
+    local canvas = love.graphics.newCanvas(W, H,
+      { dpiscale = 1, format = screenshotFormat })
     love.graphics.setCanvas(canvas)
     love.graphics.clear(1, 1, 1, 1)
     love.graphics.push()
