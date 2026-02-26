@@ -659,6 +659,12 @@ return function ()
 
   local previousGuesses
 
+  local tutorialProgress = 1
+  -- 1: Stick
+  -- 2: Long press
+  -- 3: Paint
+  -- -1: Done
+
   local Wc, Hc = 144, 180
   local WcEx, HcEx = 10, 10
   local tex = love.image.newImageData(Wc + WcEx * 2, Hc + HcEx * 2, 'rgba8')
@@ -699,6 +705,7 @@ return function ()
     btnStick.enabled = false
 
     audio.sfx('bubble_out')
+    if tutorialProgress == 1 then tutorialProgress = 2 end
   end)
   buttons[#buttons + 1] = btnStick
 
@@ -739,6 +746,10 @@ return function ()
   -- Palette buttons
   local paletteButton = function (x, y, w, h, r, g, b)
     buttons[#buttons + 1] = button({ x = x, y = y, w = w, h = h }, function ()
+      if tutorialProgress == 3 and
+          (r ~= selPaint[1] or g ~= selPaint[2] or b ~= selPaint[3]) then
+        tutorialProgress = -1
+      end
       selPaint = { r, g, b }
       local m = 3
       local y = y - 2   -- Offset bubble particle display characteristics
@@ -852,6 +863,7 @@ return function ()
         btnLang.enabled = true
         audio.sfx('slot', 0.15)
       end
+      if tutorialProgress == 2 then tutorialProgress = 3 end
     end
 
     for i = 1, #buttons do if buttons[i].release(x, y) then return true end end
@@ -1176,6 +1188,15 @@ return function ()
         end
         love.graphics.draw(recognitionResultText, 18, 169)
       end
+    end
+
+    -- Tutorial
+    local arrowDy = math.floor(0.5 + 1 * math.sin(T / 400 * math.pi * 2))
+    love.graphics.setColor(1, 1, 1)
+    if tutorialProgress == 1 then
+      draw.img('arrow', 128, 174 + arrowDy)
+    elseif tutorialProgress == 3 then
+      draw.img('arrow', 80, 239 + arrowDy)
     end
 
     if not isScreenshot then
