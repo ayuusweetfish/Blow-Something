@@ -62,134 +62,134 @@
         .then((buf) => WebAssembly.instantiate(buf))
         .then((result) => (polygonRast = result.instance.exports));
 
+function processPrintedText(text) {
+  if (text[0] === '+') {
+    const op = text[1];
+    const fields = text.substring(3).split(' ');
+    const addr = parseInt(fields[0], 16);
+    const w = parseInt(fields[1]);
+    const h = parseInt(fields[2]);
+    const r = +fields[3];
+    const g = +fields[4];
+    const b = +fields[5];
+    const bubbleOpacity = (op === 'F' ? +fields[6] : 0);
+    const t = (op === 'F' ? +fields[7] : 0);
+    const p = fields.slice(op === 'F' ? 8 : 6);
+    const ptBufPtr = polygonRast.get_pt_buf();
+    new Float32Array(polygonRast.memory.buffer, ptBufPtr, p.length)
+      .set(new Float32Array(p));
+    const pixelBufPtr = polygonRast.get_pix_buf();
+    new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4)
+      .set(Module.HEAPU8.slice(addr, addr + w * h * 4));
+    if (op === 'F')
+      polygonRast.rasterize_fill(w, h, p.length / 2, r, g, b, bubbleOpacity, t);
+    else
+      polygonRast.rasterize_outline(w, h, p.length / 2, r, g, b);
+    Module.HEAPU8.set(
+      new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4),
+      addr
+    );
+  } else if (text[0] === '^') {
+    text = text.substring(1).trim();
+    var splitAt = text.indexOf('^');
+    var savePath = text.substring(0, splitAt);
+    text = text.substring(splitAt + 1);
+    var payload = new Uint8Array(text.length / 2);
+    for (var i = 0; i < payload.length; i++)
+      payload[i] = parseInt(text.substring(i * 2, i * 2 + 2), 16)
+    fetch(window.location.origin + '/look', {
+      method: 'POST',
+      body: payload.buffer,
+    }).then((resp) => {
+      if (resp.status !== 200) {
+        FS.writeFile(savePath, '*err');
+        return;
+      }
+      resp.text().then((text) => {
+        FS.writeFile(savePath, text);
+      }).catch((e) => {
+        console.log(e);
+        FS.writeFile(savePath, '*err');
+      });
+    }).catch((e) => {
+      console.log(e);
+      FS.writeFile(savePath, '*err');
+    });
+  } else if (text[0] === '#') {
+    var args = text.substring(1).split(' ');
+    var photoPath = args[0];
+    var w = args[1], h = args[2], format = args[3];
+    var photoContent = FS.readFile(photoPath);
+
+    function downloadRgba16fAsPng(photoContent, w, h) {
+      // Convert rgba16f to rgba8 (sRGB)
+
+      // Represent float16 with uint16
+      const floatPix = new Uint16Array(photoContent.buffer, photoContent.byteOffset, photoContent.byteLength / 2);
+      const rgba8 = new Uint8ClampedArray(w * h * 4);
+
+      // 1 sign, 5 exponent, 10 mantissa
+      function decodeFloat16(binary) {
+        const exponent = (binary & 0x7C00) >> 10;
+        const fraction = (binary & 0x03FF);
+        const sign = (binary & 0x8000) ? -1 : 1;
+        if (exponent === 0) {
+          return sign * Math.pow(2, -14) * (fraction / 1024);
+        } else if (exponent === 0x1F) {
+          return fraction ? NaN : sign * Infinity;
+        }
+        return sign * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
+      }
+
+      for (let i = 0; i < floatPix.length; i++)
+        rgba8[i] = Math.min(255, Math.max(0, decodeFloat16(floatPix[i]) * 255));
+
+      // Draw the pixels to a canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      const imageData = new ImageData(rgba8, w, h);
+      ctx.putImageData(imageData, 0, 0);
+
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Blow-Something.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    }
+
+    if (format === 'rgba16f') {
+      downloadRgba16fAsPng(photoContent, w, h);
+    } else {
+      alert('We cannot take a screenshot in your browser >-<');
+    }
+    FS.unlink(photoPath);
+  } else if (text[0] === '!') {
+    console.log(text.substring(1));
+  }
+}
+
       var Module = {
         arguments: ["./game.love"],
         INITIAL_MEMORY: 134217728,
         print: function (text) {
-        try {   // Catch all errors; if they propogate outside *bad things happen* > <
-          if (text[0] === '+') {
-            const op = text[1];
-            const fields = text.substring(3).split(' ');
-            const addr = parseInt(fields[0], 16);
-            const w = parseInt(fields[1]);
-            const h = parseInt(fields[2]);
-            const r = +fields[3];
-            const g = +fields[4];
-            const b = +fields[5];
-            const bubbleOpacity = (op === 'F' ? +fields[6] : 0);
-            const t = (op === 'F' ? +fields[7] : 0);
-            const p = fields.slice(op === 'F' ? 8 : 6);
-            const ptBufPtr = polygonRast.get_pt_buf();
-            new Float32Array(polygonRast.memory.buffer, ptBufPtr, p.length)
-              .set(new Float32Array(p));
-            const pixelBufPtr = polygonRast.get_pix_buf();
-            new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4)
-              .set(Module.HEAPU8.slice(addr, addr + w * h * 4));
-            if (op === 'F')
-              polygonRast.rasterize_fill(w, h, p.length / 2, r, g, b, bubbleOpacity, t);
-            else
-              polygonRast.rasterize_outline(w, h, p.length / 2, r, g, b);
-            Module.HEAPU8.set(
-              new Uint8Array(polygonRast.memory.buffer, pixelBufPtr, w * h * 4),
-              addr
-            );
-          } else if (text[0] === '^') {
-            text = text.substring(1).trim();
-            var splitAt = text.indexOf('^');
-            var savePath = text.substring(0, splitAt);
-            text = text.substring(splitAt + 1);
-            var payload = new Uint8Array(text.length / 2);
-            for (var i = 0; i < payload.length; i++)
-              payload[i] = parseInt(text.substring(i * 2, i * 2 + 2), 16)
-            fetch(window.location.origin + '/look', {
-              method: 'POST',
-              body: payload.buffer,
-            }).then((resp) => {
-              if (resp.status !== 200) {
-                FS.writeFile(savePath, '*err');
-                return;
+          try {   // Catch all errors; if they propogate outside *bad things happen* > <
+            processPrintedText(text);
+            if (loadingText !== null) {
+              if (text !== '*finish') {
+                loadingText.innerText = 'Loading assets... (' + text + ')';
+              } else {
+                loadingText.remove();
+                loadingText = null;
               }
-              resp.text().then((text) => {
-                FS.writeFile(savePath, text);
-              }).catch((e) => {
-                console.log(e);
-                FS.writeFile(savePath, '*err');
-              });
-            }).catch((e) => {
-              console.log(e);
-              FS.writeFile(savePath, '*err');
-            });
-            return;
-          } else if (text[0] === '#') {
-            var args = text.substring(1).split(' ');
-            var photoPath = args[0];
-            var w = args[1], h = args[2], format = args[3];
-            var photoContent = FS.readFile(photoPath);
-            console.log(photoPath, w, h, format, photoContent);
-
-function downloadRgba16fAsPng(photoContent, w, h) {
-  // Convert rgba16f to rgba8 (sRGB)
-
-  // Represent float16 with uint16
-  const floatPix = new Uint16Array(photoContent.buffer, photoContent.byteOffset, photoContent.byteLength / 2);
-  const rgba8 = new Uint8ClampedArray(w * h * 4);
-
-  // 1 sign, 5 exponent, 10 mantissa
-  function decodeFloat16(binary) {
-    const exponent = (binary & 0x7C00) >> 10;
-    const fraction = (binary & 0x03FF);
-    const sign = (binary & 0x8000) ? -1 : 1;
-    if (exponent === 0) {
-      return sign * Math.pow(2, -14) * (fraction / 1024);
-    } else if (exponent === 0x1F) {
-      return fraction ? NaN : sign * Infinity;
-    }
-    return sign * Math.pow(2, exponent - 15) * (1 + fraction / 1024);
-  }
-
-  for (let i = 0; i < floatPix.length; i++)
-    rgba8[i] = Math.min(255, Math.max(0, decodeFloat16(floatPix[i]) * 255));
-
-  // Draw the pixels to a canvas
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  const imageData = new ImageData(rgba8, w, h);
-  ctx.putImageData(imageData, 0, 0);
-
-  canvas.toBlob((blob) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Blow-Something.png`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }, 'image/png');
-}
-
-            if (format === 'rgba16f') {
-              downloadRgba16fAsPng(photoContent, w, h);
-            } else {
-              alert('We cannot take a screenshot in your browser >-<');
             }
-            FS.unlink(photoPath);
-            return;
-          } else if (text[0] === '!') {
-            console.log(text.substring(1));
-            return;
+          } catch (e) {
+            console.log(e);
           }
-          if (loadingText !== null) {
-            if (text !== '*finish') {
-              loadingText.innerText = 'Loading assets... (' + text + ')';
-            } else {
-              loadingText.remove();
-              loadingText = null;
-            }
-          }
-        } catch (e) {
-          console.log(e);
-        }
         },
         printErr: console.error.bind(console),
         canvas: (function() {
