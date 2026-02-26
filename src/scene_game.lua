@@ -3,8 +3,10 @@ local button = require 'button'
 local audio = require 'audio'
 local unpack = unpack or table.unpack
 
+local isWeb = love.system.getOS() == 'Web'
+
 local enqueueRequest, fetchResponse
-if love.system.getOS() == 'Web' then
+if isWeb then
   local id = 0
   local fetchFiles = {}
   enqueueRequest = function (s)
@@ -48,7 +50,7 @@ else
 end
 
 local saveImage
-if love.system.getOS() == 'Web' then
+if isWeb then
   saveImage = function (imgData)
     -- The encoding module is not compiled in
     -- local fileData = imgData:encode('png')
@@ -520,7 +522,7 @@ end
 
 local blitFilledPolygon, blitOutline
 
-if love.system.getOS() == 'Web' then
+if isWeb then
 blitFilledPolygon = function (p, tex, paintR, paintG, paintB, bubbleOpacity, T)
   local addr = tostring(tex:getPointer()):sub(13) -- 'userdata: 0x'
   local texW, texH = tex:getDimensions()
@@ -705,10 +707,12 @@ return function ()
   local imgCamera = draw.get('camera')
   local screenshotFormat = nil  -- Fall back to default
   local supportedFormats = love.graphics.getCanvasFormats()
-  for _, format in ipairs({'rgba8', 'rgba16f', 'rgba4'}) do
-    if supportedFormats[format] then
-      screenshotFormat = format
-      break
+  if isWeb then
+    for _, format in ipairs({'rgba16f', 'rgba4'}) do
+      if supportedFormats[format] then
+        screenshotFormat = format
+        break
+      end
     end
   end
   local btnCamera = button(imgCamera, function ()
