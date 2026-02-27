@@ -44,7 +44,7 @@
   <body>
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <p id='loading'>Loading...</p>
-    <button id='fullscreen-button'><img src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0iI2ZmZmZmZiIgdmlld0JveD0iMCAwIDI1NiAyNTYiPjxwYXRoIGQ9Ik0yMTYsNDhWOTZhOCw4LDAsMCwxLTE2LDBWNjcuMzFsLTQyLjM0LDQyLjM1YTgsOCwwLDAsMS0xMS4zMi0xMS4zMkwxODguNjksNTZIMTYwYTgsOCwwLDAsMSwwLTE2aDQ4QTgsOCwwLDAsMSwyMTYsNDhaTTk4LjM0LDE0Ni4zNCw1NiwxODguNjlWMTYwYTgsOCwwLDAsMC0xNiwwdjQ4YTgsOCwwLDAsMCw4LDhIOTZhOCw4LDAsMCwwLDAtMTZINjcuMzFsNDIuMzUtNDIuMzRhOCw4LDAsMCwwLTExLjMyLTExLjMyWk0yMDgsMTUyYTgsOCwwLDAsMC04LDh2MjguNjlsLTQyLjM0LTQyLjM1YTgsOCwwLDAsMC0xMS4zMiwxMS4zMkwxODguNjksMjAwSDE2MGE4LDgsMCwwLDAsMCwxNmg0OGE4LDgsMCwwLDAsOC04VjE2MEE4LDgsMCwwLDAsMjA4LDE1MlpNNjcuMzEsNTZIOTZhOCw4LDAsMCwwLDAtMTZINDhhOCw4LDAsMCwwLTgsOFY5NmE4LDgsMCwwLDAsMTYsMFY2Ny4zMWw0Mi4zNCw0Mi4zNWE4LDgsMCwwLDAsMTEuMzItMTEuMzJaIj48L3BhdGg+PC9zdmc+Cg=='></button>
+    <button id='fullscreen-button' style='display: none'><img src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0iI2ZmZmZmZiIgdmlld0JveD0iMCAwIDI1NiAyNTYiPjxwYXRoIGQ9Ik0yMTYsNDhWOTZhOCw4LDAsMCwxLTE2LDBWNjcuMzFsLTQyLjM0LDQyLjM1YTgsOCwwLDAsMS0xMS4zMi0xMS4zMkwxODguNjksNTZIMTYwYTgsOCwwLDAsMSwwLTE2aDQ4QTgsOCwwLDAsMSwyMTYsNDhaTTk4LjM0LDE0Ni4zNCw1NiwxODguNjlWMTYwYTgsOCwwLDAsMC0xNiwwdjQ4YTgsOCwwLDAsMCw4LDhIOTZhOCw4LDAsMCwwLDAtMTZINjcuMzFsNDIuMzUtNDIuMzRhOCw4LDAsMCwwLTExLjMyLTExLjMyWk0yMDgsMTUyYTgsOCwwLDAsMC04LDh2MjguNjlsLTQyLjM0LTQyLjM1YTgsOCwwLDAsMC0xMS4zMiwxMS4zMkwxODguNjksMjAwSDE2MGE4LDgsMCwwLDAsMCwxNmg0OGE4LDgsMCwwLDAsOC04VjE2MEE4LDgsMCwwLDAsMjA4LDE1MlpNNjcuMzEsNTZIOTZhOCw4LDAsMCwwLDAtMTZINDhhOCw4LDAsMCwwLTgsOFY5NmE4LDgsMCwwLDAsMTYsMFY2Ny4zMWw0Mi4zNCw0Mi4zNWE4LDgsMCwwLDAsMTEuMzItMTEuMzJaIj48L3BhdGg+PC9zdmc+Cg=='></button>
 
     <script type='text/javascript'>
       var loadingText = document.getElementById('loading');
@@ -56,11 +56,11 @@
         const button = document.getElementById('fullscreen-button')
         const fullScreenFn = (
           document.body.requestFullscreen ||
-          document.body.webkitRequestFullScreen ||
           document.body.webkitRequestFullscreen
         )
         if (fullScreenFn) {
           button.addEventListener('click', () => fullScreenFn.apply(document.body))
+          button.style.display = ''
         } else {
           button.remove()
         }
