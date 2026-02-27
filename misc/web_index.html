@@ -23,31 +23,48 @@
         bottom: 0;
         color: #fefefe;
       }
+      button#fullscreen-button {
+        background: none; border: none;
+        padding: 0; line-height: 0;
+        margin: 12px;
+        position: absolute; top: 0; right: 0;
+        opacity: 0.6;
+        transition: opacity 0.1s ease;
+        cursor: pointer;
+      }
+      button#fullscreen-button:hover,
+      button#fullscreen-button:active {
+        opacity: 1;
+      }
+      button#fullscreen-button > img {
+        width: 48px; height: 48px;
+      }
     </style>
   </head>
   <body>
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <p id='loading'>Loading...</p>
+    <button id='fullscreen-button'><img src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0iI2ZmZmZmZiIgdmlld0JveD0iMCAwIDI1NiAyNTYiPjxwYXRoIGQ9Ik0yMTYsNDhWOTZhOCw4LDAsMCwxLTE2LDBWNjcuMzFsLTQyLjM0LDQyLjM1YTgsOCwwLDAsMS0xMS4zMi0xMS4zMkwxODguNjksNTZIMTYwYTgsOCwwLDAsMSwwLTE2aDQ4QTgsOCwwLDAsMSwyMTYsNDhaTTk4LjM0LDE0Ni4zNCw1NiwxODguNjlWMTYwYTgsOCwwLDAsMC0xNiwwdjQ4YTgsOCwwLDAsMCw4LDhIOTZhOCw4LDAsMCwwLDAtMTZINjcuMzFsNDIuMzUtNDIuMzRhOCw4LDAsMCwwLTExLjMyLTExLjMyWk0yMDgsMTUyYTgsOCwwLDAsMC04LDh2MjguNjlsLTQyLjM0LTQyLjM1YTgsOCwwLDAsMC0xMS4zMiwxMS4zMkwxODguNjksMjAwSDE2MGE4LDgsMCwwLDAsMCwxNmg0OGE4LDgsMCwwLDAsOC04VjE2MEE4LDgsMCwwLDAsMjA4LDE1MlpNNjcuMzEsNTZIOTZhOCw4LDAsMCwwLDAtMTZINDhhOCw4LDAsMCwwLTgsOFY5NmE4LDgsMCwwLDAsMTYsMFY2Ny4zMWw0Mi4zNCw0Mi4zNWE4LDgsMCwwLDAsMTEuMzItMTEuMzJaIj48L3BhdGg+PC9zdmc+Cg=='></button>
 
     <script type='text/javascript'>
       var loadingText = document.getElementById('loading');
-      function goFullScreen(){
-            var canvas = document.getElementById("canvas");
-            if(canvas.requestFullScreen)
-                canvas.requestFullScreen();
-            else if(canvas.webkitRequestFullScreen)
-                canvas.webkitRequestFullScreen();
-            else if(canvas.mozRequestFullScreen)
-                canvas.mozRequestFullScreen();
-      }
-      function FullScreenHook(){
-        var canvas = document.getElementById("canvas");
-        canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-        canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-      }
 
       window.onload = function () { window.focus(); };
       window.onclick = function () { window.focus(); };
+
+      window.addEventListener('load', () => {
+        const button = document.getElementById('fullscreen-button')
+        const fullScreenFn = (
+          document.body.requestFullscreen ||
+          document.body.webkitRequestFullScreen ||
+          document.body.webkitRequestFullscreen
+        )
+        if (fullScreenFn) {
+          button.addEventListener('click', () => fullScreenFn.apply(document.body))
+        } else {
+          button.remove()
+        }
+      })
 
       window.addEventListener("keydown", function(e) {
         // space and arrow keys
