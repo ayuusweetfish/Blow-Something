@@ -2,6 +2,7 @@
 /backups/
 !/backups/highlight_test/
 /misc/lovejs-env/node_modules/
+/misc/luamin-env/node_modules/
 /release/
 /server/bubble.db
 /server/run.sh
