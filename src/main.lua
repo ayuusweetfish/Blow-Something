@@ -5,9 +5,9 @@ local isMobile = (love.system.getOS() == 'Android' or love.system.getOS() == 'iO
 local isWeb = (love.system.getOS() == 'Web')
 
 love.window.setMode(
-  isWeb and W * 2 or W * 3,
-  isWeb and H * 2 or H * 3,
-  { fullscreen = false, highdpi = true }
+  isWeb and W * 1 or W * 3,
+  isWeb and H * 1 or H * 3,
+  { fullscreen = false, highdpi = false }
 )
 
 love.graphics.setDefaultFilter('nearest', 'nearest')
