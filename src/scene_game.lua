@@ -661,7 +661,7 @@ return function ()
 
   local tutorialProgress = 1
   -- 1: Stick
-  -- 2: Long press
+  -- 2: Long ress
   -- 3: Paint
   -- -1: Done
 
@@ -747,6 +747,7 @@ return function ()
   local paletteButton = function (x, y, w, h, r, g, b)
     buttons[#buttons + 1] = button({ x = x, y = y, w = w, h = h }, function ()
       if tutorialProgress == 3 and
+          state == STATE_PAINT and
           (r ~= selPaint[1] or g ~= selPaint[2] or b ~= selPaint[3]) then
         tutorialProgress = -1
       end
@@ -1063,6 +1064,12 @@ return function ()
     -- love.graphics.setColor(1, 0.96, 0.92, 0.8)
     -- love.graphics.rectangle('fill', Xc - Wc / 2, Yc - Hc / 2, Wc, Hc)
 
+    -- Tutorial
+    if tutorialProgress == 2 then
+      love.graphics.setColor(1, 1, 1, 0.7)
+      draw.img('press', 32, 73)
+    end
+
     -- Previous bubbles
     love.graphics.setBlendMode('alpha')
     love.graphics.setColor(1, 1, 1)
@@ -1209,7 +1216,7 @@ return function ()
     love.graphics.setColor(1, 1, 1)
     if tutorialProgress == 1 then
       draw.img('arrow', 128, 174 + arrowDy)
-    elseif tutorialProgress == 3 then
+    elseif tutorialProgress == 3 and state == STATE_PAINT then
       draw.img('arrow', 80, 239 + arrowDy)
     end
 
