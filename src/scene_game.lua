@@ -239,8 +239,6 @@ local createBubbles = function (n, max_x, max_y)
     T = T + dt
     if px ~= nil then
       pop_expired_history()
-      local min_dist = {}
-      local min_dist_dir = {}
       -- Temporarily add current pointer to history
       hist[#hist + 1] = { px / scale, py / scale }
       -- History point is effective if its at the same side of the bubble
@@ -252,20 +250,22 @@ local createBubbles = function (n, max_x, max_y)
         py = py * scale
         effective[i] = (check_inside(px / scale, py / scale) == p_start_inside)
       end
-      -- Find longest effective sequence
+      -- Local average direction for each point
+      local hist_dir_x = (hist[#hist][1] - hist[1][1]) / math.max(1, #hist - 1)
+      local hist_dir_y = (hist[#hist][2] - hist[1][2]) / math.max(1, #hist - 1)
+      -- Find the first effective sequence
       local eff_start, eff_end = 1, 0
-      local cur_start
       for i = 1, #hist do
         if effective[i] then
-          if not cur_start then cur_start = i end
-          if i - cur_start > eff_end - eff_start then
-            eff_start, eff_end = cur_start, i
-          end
-        else
-          cur_start = nil
+          if eff_end == 0 then eff_start = i end
+          eff_end = i
+        elseif eff_end > 0 then
+          break
         end
       end
       -- Find each mass point's minimum distance to an effective history point
+      local min_dist = {}
+      local min_dist_dir = {}
       for i = eff_start, eff_end do
         local px, py = unpack(hist[i])
         px = px * scale
@@ -294,9 +294,13 @@ local createBubbles = function (n, max_x, max_y)
       for b, dsq in pairs(min_dist) do
         local d = math.sqrt(dsq)
         local dx, dy = unpack(min_dist_dir[b])
+        dx = dx / d
+        dy = dy / d
+        dx = dx + hist_dir_x -- * 1
+        dy = dy + hist_dir_y -- * 1
         local t = 1 - d / imp_r
         local imp_intensity = 1 - t * t
-        local imp_scale = 3 * scale * imp_intensity / d
+        local imp_scale = 3 * scale * imp_intensity * math.min(1, #hist / 9)
         b:applyForce(dx * imp_scale, dy * imp_scale)
       end
     end
@@ -854,17 +858,15 @@ return function ()
     if btnLang.release(x, y) then return true end
 
     if state == STATE_INFLATE and inflateStart then
-      if tutorialProgress == 2 then
-        if sinceState - inflateStart >= 120 then
-          -- Proceed
-          tutorialProgress = 3
-        else
-          -- Restart inflation; cancel current touch
-          state, sinceState = STATE_INFLATE, 0
-          inflateStart = nil
-          return true
-        end
+      local holdDurLimit = 40
+      if tutorialProgress == 2 then holdDurLimit = 120 end
+      if sinceState - inflateStart < holdDurLimit then
+        -- Restart inflation; cancel current touch
+        state, sinceState = STATE_INFLATE, 0
+        inflateStart = nil
+        return true
       end
+      if tutorialProgress == 2 then tutorialProgress = 3 end
       state, sinceState = STATE_PAINT, 0
       bubbles.rebuild_joints()
       -- Pull the slot at the first bubble release
@@ -992,7 +994,7 @@ return function ()
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
       local t = (sinceState - inflateStart) / 240
-      local size = 0.1 + 0.8 * (1 - math.exp(-t))^2
+      local size = 0.08 + 0.82 * (1 - math.exp(-t))^2
       if tutorialProgress == 2 then
         size = 0.03 + 0.87 * (1 - math.exp(-t))^2
       end
