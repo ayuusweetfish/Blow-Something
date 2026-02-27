@@ -855,7 +855,7 @@ return function ()
 
     if state == STATE_INFLATE and inflateStart then
       if tutorialProgress == 2 then
-        if sinceState - inflateStart >= 180 then
+        if sinceState - inflateStart >= 120 then
           -- Proceed
           tutorialProgress = 3
         else
