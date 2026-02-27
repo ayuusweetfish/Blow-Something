@@ -853,6 +853,17 @@ return function ()
     if btnLang.release(x, y) then return true end
 
     if state == STATE_INFLATE and inflateStart then
+      if tutorialProgress == 2 then
+        if sinceState - inflateStart >= 180 then
+          -- Proceed
+          tutorialProgress = 3
+        else
+          -- Restart inflation; cancel current touch
+          state, sinceState = STATE_INFLATE, 0
+          inflateStart = nil
+          return true
+        end
+      end
       state, sinceState = STATE_PAINT, 0
       bubbles.rebuild_joints()
       -- Pull the slot at the first bubble release
@@ -863,7 +874,6 @@ return function ()
         btnLang.enabled = true
         audio.sfx('slot', 0.15)
       end
-      if tutorialProgress == 2 then tutorialProgress = 3 end
     end
 
     for i = 1, #buttons do if buttons[i].release(x, y) then return true end end
@@ -981,7 +991,11 @@ return function ()
     sinceState = sinceState + 1
     if state == STATE_INFLATE and inflateStart then
       local t = (sinceState - inflateStart) / 240
-      bubbles.set_size(0.1 + 0.8 * (1 - math.exp(-t))^2)
+      local size = 0.1 + 0.8 * (1 - math.exp(-t))^2
+      if tutorialProgress == 2 then
+        size = 0.03 + 0.87 * (1 - math.exp(-t))^2
+      end
+      bubbles.set_size(size)
     end
     if (state == STATE_INFLATE and inflateStart) or state == STATE_PAINT then
       bubbles.update(1 / 240)
