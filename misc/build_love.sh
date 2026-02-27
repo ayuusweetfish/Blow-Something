@@ -19,6 +19,7 @@ else
     find . -exec touch -t 198001010000 {} +
     find . -type f -print | sort | zip "$wd/release/Blow Something.love" -X -@ -9
     echo "$wd/release/Blow Something.love"
+    sha1sum "$wd/release/Blow Something.love"
   )
   rm -rf "$t"
 fi
