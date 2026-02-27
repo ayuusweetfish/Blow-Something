@@ -11,7 +11,7 @@ else
     cd "$t/" || exit
     pwd
     find . -exec touch -t 198001010000 {} +
-    zip "$wd/release/Blow Something.love" -Xr * -9
+    find . -type f -print | sort | zip "$wd/release/Blow Something.love" -X -@ -9
   )
   rm -rf "$t"
 fi
