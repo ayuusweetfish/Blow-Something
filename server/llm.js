@@ -231,5 +231,5 @@ export const askForRecognition = retry(_askForRecognition, 3, 'Cannot ask for re
 
 // ======== Test run ======== //
 if (import.meta.main) {
-  console.log(await askForRecognition(await Deno.readFile('banana-1.png'), '香蕉', ['腰果']))
+  console.log(await askForRecognition(await Deno.readFile('../misc/test_images/banana-1.png'), '香蕉', ['腰果']))
 }
