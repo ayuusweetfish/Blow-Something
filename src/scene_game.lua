@@ -615,7 +615,19 @@ local targetWords = {
   {zh = '蘑菇', en = 'Mushroom'},
   {zh = '花生', en = 'Peanut/Peanuts'},
   {zh = '鱼', en = 'Fish'},
-  {zh = '汽车', en = 'Car'},
+  {zh = '汽车/轿车', en = 'Car'},
+  {zh = '花/花朵', en = 'Flower'},
+  {zh = '蝴蝶', en = 'Butterfly'},
+  {zh = '鸟', en = 'Bird'},
+  {zh = '冰淇淋/冰激凌/甜筒/蛋筒', en = 'Ice-cream'},
+  {zh = '帽子/鸭舌帽', en = 'Hat/Cap'},
+  {zh = '彩虹', en = 'Rainbow'},
+  {zh = '灯泡/灯/电灯泡/灯珠', en = 'Lightbulb/Light bulb'},
+  {zh = '柠檬', en = 'Lemon'},
+  {zh = '草莓', en = 'Strawberry'},
+  {zh = '樱桃', en = 'Cherry/Cherries'},
+  {zh = '雪人', en = 'Snowman'},
+  -- {zh = '', en = ''},
 }
 
 for i = 1, #targetWords do
@@ -1033,9 +1045,18 @@ return function ()
     end
   end
 
+  local debug = false
+  local debugKey, debugCounter = 'xyzzy', 0
   s.key = function (key)
-    if key == 'space' then rewardCount = rewardCount + 1 end
-    if false and key == '1' then randomTargetWord() end
+    if debug then
+      if key == 'space' then rewardCount = rewardCount + 1
+      elseif key == '1' then randomTargetWord() end
+    else
+      if #key == 1 and key:byte(1) == debugKey:byte(debugCounter + 1) then
+        debugCounter = debugCounter + 1
+        if debugCounter == #debugKey then debug = true end
+      end
+    end
   end
 
   local confetti = draw.get('confetti')
