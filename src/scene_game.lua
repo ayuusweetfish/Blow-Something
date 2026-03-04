@@ -1055,6 +1055,8 @@ return function ()
       if #key == 1 and key:byte(1) == debugKey:byte(debugCounter + 1) then
         debugCounter = debugCounter + 1
         if debugCounter == #debugKey then debug = true end
+      else
+        debugCounter = 0
       end
     end
   end
