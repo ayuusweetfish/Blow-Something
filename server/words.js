@@ -35,7 +35,7 @@ export const wordLookup = Object.fromEntries(words.flatMap((o) => {
 
 export const wordBingo = (target, recognized) => {
   const w = wordLookup[target]
-  return w.origEntry.word[w.lang].split('/').indexOf(recognized) !== -1
+  return w && w.origEntry.word[w.lang].split('/').indexOf(recognized) !== -1
 }
 
 if (import.meta.main) {
