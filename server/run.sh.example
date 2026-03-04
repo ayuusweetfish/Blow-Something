@@ -1,2 +1,2 @@
 API_KEY_ALIYUN=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
-deno run -A ${1:-main.js}
+deno run -A ${1:-main.js} 'Blow-Something'
