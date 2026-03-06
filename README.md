@@ -9,6 +9,7 @@ A draw-and-guess game with bubbles as the paintbrush. The player drags and pops 
 ![游戏截图，绘画“橘子” Game screenshot, painting “Orange”](./misc/photo_zh.png)
 
 Global Game Jam 2025 参赛作品 / Entry to Global Jam 2025  
+主题：泡泡 *Bubbles* / Theme: *Bubbles*  
 Ayu, Jupiter, Suan, Avery
 
 ## 许可 / Permit
