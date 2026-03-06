@@ -95,6 +95,7 @@ local loop = function (introPath, introLen, loopPath, loopLen, bufSize)
   local altRunning = false
   local curSample = -introLen
   local push = function ()
+    print('!push', curSample)
     local data = {}   -- SoundData, offset
     if introRunning then
       local pkt = decIntro:decode()
@@ -127,6 +128,7 @@ local loop = function (introPath, introLen, loopPath, loopLen, bufSize)
       end
     end
     curSample = curSample + pktSamples
+    print('!data', #data, curSample)
     if #data == 1 then
       source:queue(data[1])
     elseif #data >= 2 then
@@ -148,7 +150,7 @@ local loop = function (introPath, introLen, loopPath, loopLen, bufSize)
 
   local update = function ()
     for _ = 1, source:getFreeBufferCount() do push() end
-    -- if not source:isPlaying() then source:play() end
+    if not source:isPlaying() then source:play() end
   end
   update()
 
