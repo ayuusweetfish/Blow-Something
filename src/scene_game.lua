@@ -190,6 +190,44 @@ local createBubbles = function (n, max_x, max_y)
     return parity
   end
 
+  local untangle_polygon = function (b)
+    local seg_intersect = function (A, B, C, D)
+      local ccw = function (A, B, C)
+        return (C[2] - A[2]) * (B[1] - A[1]) > (B[2] - A[2]) * (C[1] - A[1])
+      end
+      return ccw(A, C, D) ~= ccw(B, C, D) and ccw(A, B, C) ~= ccw(A, B, D)
+    end
+
+    local swap_bodies = function (b1, b2)
+      local x1, y1 = b1:getPosition()
+      local x2, y2 = b2:getPosition()
+      local vx1, vy1 = b1:getLinearVelocity()
+      local vx2, vy2 = b2:getLinearVelocity()
+      b1:setPosition(x2, y2)
+      b1:setLinearVelocity(vx2, vy2)
+      b2:setPosition(x1, y1)
+      b2:setLinearVelocity(vx1, vy1)
+    end
+
+    local n = #b
+    local changed = false
+
+    for i = 1, n - 2 do
+      for j = i + 2, n do
+        if not (i == 1 and j == n) then
+          local b1, b2 = b[i], b[i+1]
+          local b3, b4 = b[j], (b[j+1] or b[1])
+          if seg_intersect({b1:getPosition()}, {b2:getPosition()}, {b3:getPosition()}, {b4:getPosition()}) then
+            swap_bodies(b2, b3)
+            changed = true
+          end
+        end
+      end
+    end
+
+    return changed
+  end
+
   local T = 0
 
   local imp_r = 0.1
@@ -338,6 +376,9 @@ local createBubbles = function (n, max_x, max_y)
         end
       end
     end
+
+    -- Untangle self-intersecting polygon
+    for i = 1, 3 do if not untangle_polygon(b) then break end end
 
     world:update(dt)
   end
