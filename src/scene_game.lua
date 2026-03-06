@@ -308,7 +308,7 @@ local createBubbles = function (n, max_x, max_y)
     end
 
     -- Repulsive force among close points to prevent self-intersection
-    local rep_r = 3.0 * (math.pi * 2 / n * expected_r) * scale
+    local rep_r = 4.0 * (math.pi * 2 / n * expected_r) * scale
     -- Scan and find near pairs
     local p = {}
     for i = 1, n do
@@ -332,7 +332,7 @@ local createBubbles = function (n, max_x, max_y)
         if dsq < rep_r_cur * rep_r_cur then
           local d = math.sqrt(dsq)
           local intensity = 1 - (d / rep_r_cur) ^ 2
-          local rep_scale = 5e-1 * scale * intensity / d
+          local rep_scale = 1.5 * scale * intensity / d
           b[p[i].i]:applyForce(dx * rep_scale, dy * rep_scale)
           b[p[k].i]:applyForce(-dx * rep_scale, -dy * rep_scale)
         end
