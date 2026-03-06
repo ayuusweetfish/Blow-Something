@@ -627,7 +627,7 @@ local targetWords = {
   {zh = '草莓', en = 'Strawberry'},
   {zh = '樱桃', en = 'Cherry/Cherries'},
   {zh = '雪人', en = 'Snowman'},
-  -- {zh = '', en = ''},
+  {zh = '茶壶/水壶/壶', en = 'Teapot'},
 }
 
 for i = 1, #targetWords do

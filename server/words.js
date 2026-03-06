@@ -23,6 +23,7 @@ export const words = [
   { word: { zh: '草莓', en: 'Strawberry' }, hint: '某种水果' },
   { word: { zh: '樱桃', en: 'Cherry/Cherries' }, hint: '某种水果' },
   { word: { zh: '雪人', en: 'Snowman' }, hint: '某种室外游戏' },
+  { word: { zh: '茶壶/水壶/壶', en: 'Teapot' }, hint: '某种日常用品' },
   // 'a,'bs/{/{ word: { /g | 'a,'bs/ = /: /g | 'a,'bs/},/ }, hint: '' },
 ]
 
