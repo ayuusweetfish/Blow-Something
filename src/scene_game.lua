@@ -118,15 +118,17 @@ local createBubbles = function (n, max_x, max_y)
 
   local set_size = function (r)
     expected_r = r
+    local cen_offs = math.exp(-2 * r)
     for i = 1, n do
-      local x = math.cos(i / n * math.pi * 2) * expected_r
-      local y = math.sin(i / n * math.pi * 2) * expected_r
+      local x = 0.15 * cen_offs + math.cos(i / n * math.pi * 2) * expected_r
+      local y = -0.05 * cen_offs + math.sin(i / n * math.pi * 2) * expected_r
       x = x + (love.math.noise(x*0.6 - 15, y*0.6) - 0.5) * 7e-2 * expected_r
       y = y + (love.math.noise(x*0.6, y*0.6 + 10) - 0.5) * 7e-2 * expected_r
       b[i]:setPosition(x * scale * 0.94, y * scale * 0.94)
       b[i]:setLinearVelocity(0, 0)
       b[i]:setAngularVelocity(0)
     end
+    body_cen:setPosition(0.15 * cen_offs, -0.05 * cen_offs)
   end
 
   local remove_joints = function ()
